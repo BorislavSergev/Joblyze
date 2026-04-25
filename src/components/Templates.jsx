@@ -80,21 +80,20 @@ function normalizeCv(cv) {
     .slice(0, 2)
 
   return {
-    ...FALLBACK_CV,
     ...cv,
     name,
     initials: initials || 'CV',
-    title: cv.title || cv.position || cv.jobTitle || FALLBACK_CV.title,
-    email: cv.email || FALLBACK_CV.email,
-    phone: cv.phone || FALLBACK_CV.phone,
-    location: cv.location || FALLBACK_CV.location,
-    website: cv.website || cv.linkedin || cv.github || FALLBACK_CV.website,
-    summary: cv.summary || cv.profile || FALLBACK_CV.summary,
-    skills: Array.isArray(cv.skills) ? cv.skills : FALLBACK_CV.skills,
-    experience: Array.isArray(cv.experience) ? cv.experience : FALLBACK_CV.experience,
-    education: Array.isArray(cv.education) ? cv.education : FALLBACK_CV.education,
-    languages: Array.isArray(cv.languages) ? cv.languages : FALLBACK_CV.languages,
-    certifications: Array.isArray(cv.certifications) ? cv.certifications : FALLBACK_CV.certifications,
+    title: cv.title || cv.position || cv.jobTitle || 'Няма намерена позиция',
+    email: cv.email || 'Няма въведен имейл',
+    phone: cv.phone || 'Няма въведен телефон',
+    location: cv.location || 'Няма въведена локация',
+    website: cv.website || cv.linkedin || cv.github || 'Няма въведен уебсайт',
+    summary: cv.summary || cv.profile || 'Няма въведено резюме',
+    skills: Array.isArray(cv.skills) ? cv.skills : [],
+    experience: Array.isArray(cv.experience) ? cv.experience : [],
+    education: Array.isArray(cv.education) ? cv.education : [],
+    languages: Array.isArray(cv.languages) ? cv.languages : [],
+    certifications: Array.isArray(cv.certifications) ? cv.certifications : [],
   }
 }
 

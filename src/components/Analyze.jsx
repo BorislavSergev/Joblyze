@@ -3,12 +3,11 @@ import { HiUpload, HiClipboardCopy, HiX, HiSparkles, HiDocumentText, HiCheck, Hi
 import { FaFileUpload } from 'react-icons/fa'
 import ReactMarkdown from 'react-markdown'
 import { analyzeResumeWithGemini, buildCvWebsiteDataWithGemini } from '../services/geminiService'
-import CvWebsiteTemplate from './CvWebsiteTemplate'
 import { useAuth } from '../context/AuthContext'
-
 
 function Analyze() {
   const { user, saveCv } = useAuth()
+
   const [resumeFile, setResumeFile]           = useState(null)
   const [resumeName, setResumeName]           = useState('')
   const [resumeDragging, setResumeDragging]   = useState(false)
@@ -16,45 +15,87 @@ function Analyze() {
   const [feedback, setFeedback]               = useState('')
   const [loading, setLoading]                 = useState(false)
   const [isStreaming, setIsStreaming]         = useState(false)
-  const [showWebsiteDialog, setShowWebsiteDialog] = useState(false)
-  const [generatingWebsite, setGeneratingWebsite] = useState(false)
-  const [cvWebsiteData, setCvWebsiteData]     = useState(null)
 
-  const canSubmit = resumeFile && jdText.trim() && !loading
+  const [showSaveCvDialog, setShowSaveCvDialog] = useState(false)
+  const [savingCv, setSavingCv]                 = useState(false)
+  const [savedCvData, setSavedCvData]           = useState(null)
+  const [saveSuccess, setSaveSuccess]           = useState('')
+  const [saveError, setSaveError]               = useState('')
 
-  const handleResumeDragOver  = useCallback((e) => { e.preventDefault(); setResumeDragging(true) }, [])
-  const handleResumeDragLeave = useCallback((e) => { e.preventDefault(); setResumeDragging(false) }, [])
-  const handleResumeDrop = useCallback((e) => {
-    e.preventDefault(); setResumeDragging(false)
-    const f = e.dataTransfer.files[0]
-    if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) { setResumeFile(f); setResumeName(f.name) }
+  const canSubmit = resumeFile && jdText.trim() && !loading && !savingCv
+
+  const handleResumeDragOver = useCallback((e) => {
+    e.preventDefault()
+    setResumeDragging(true)
   }, [])
+
+  const handleResumeDragLeave = useCallback((e) => {
+    e.preventDefault()
+    setResumeDragging(false)
+  }, [])
+
+  const handleResumeDrop = useCallback((e) => {
+    e.preventDefault()
+    setResumeDragging(false)
+
+    const f = e.dataTransfer.files[0]
+    if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) {
+      setResumeFile(f)
+      setResumeName(f.name)
+      setSaveSuccess('')
+      setSaveError('')
+      setSavedCvData(null)
+    }
+  }, [])
+
   const handleResumeChange = useCallback((e) => {
     const f = e.target.files[0]
-    if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) { setResumeFile(f); setResumeName(f.name) }
+    if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) {
+      setResumeFile(f)
+      setResumeName(f.name)
+      setSaveSuccess('')
+      setSaveError('')
+      setSavedCvData(null)
+    }
   }, [])
 
   const handleSubmit = async () => {
     if (!canSubmit) return
-    setLoading(true); setFeedback(''); setIsStreaming(false)
-    setCvWebsiteData(null); setShowWebsiteDialog(false)
+
+    setLoading(true)
+    setFeedback('')
+    setIsStreaming(false)
+    setShowSaveCvDialog(false)
+    setSavingCv(false)
+    setSavedCvData(null)
+    setSaveSuccess('')
+    setSaveError('')
 
     try {
       const stream = await analyzeResumeWithGemini(resumeFile, jdText)
-      let accumulated = '', buffer = '', firstChunk = false
+      let accumulated = ''
+      let buffer = ''
+      let firstChunk = false
 
       for await (const chunk of stream) {
         let text = ''
+
         if (typeof chunk === 'string') text = chunk
         else if (chunk?.text) text = chunk.text
         else if (chunk?.candidates?.[0]?.content?.parts?.[0]?.text) text = chunk.candidates[0].content.parts[0].text
         else if (chunk?.delta?.text) text = chunk.delta.text
 
         if (text) {
-          if (!firstChunk) { firstChunk = true; setLoading(false); setIsStreaming(true) }
+          if (!firstChunk) {
+            firstChunk = true
+            setLoading(false)
+            setIsStreaming(true)
+          }
+
           buffer += text
           const words = buffer.split(/(\s+)/)
           buffer = words.pop() || ''
+
           for (const word of words) {
             accumulated += word
             setFeedback(accumulated)
@@ -62,9 +103,17 @@ function Analyze() {
           }
         }
       }
-      if (buffer) { accumulated += buffer; setFeedback(accumulated) }
+
+      if (buffer) {
+        accumulated += buffer
+        setFeedback(accumulated)
+      }
+
       setIsStreaming(false)
-      if (accumulated.trim()) setShowWebsiteDialog(true)
+
+      if (accumulated.trim()) {
+        setShowSaveCvDialog(true)
+      }
     } catch (err) {
       console.error(err)
       setFeedback(`**Грешка:** ${err.message || 'Неуспешен анализ. Проверете API ключа и опитайте отново.'}`)
@@ -74,38 +123,57 @@ function Analyze() {
     }
   }
 
-  const handleGenerateWebsite = async () => {
+  const handleSaveScrapedCv = async () => {
     if (!resumeFile) return
-    setGeneratingWebsite(true); setShowWebsiteDialog(false)
+
+    if (!user) {
+      setSaveError('Трябва да сте влезли в профила си, за да запазите CV.')
+      setShowSaveCvDialog(false)
+      return
+    }
+
+    setSavingCv(true)
+    setShowSaveCvDialog(false)
+    setSaveSuccess('')
+    setSaveError('')
+
     try {
       const json = await buildCvWebsiteDataWithGemini(resumeFile)
-      setCvWebsiteData(json)
-      
-      // Save CV to database if user is logged in
-      if (user) {
-        try {
-          await saveCv(json)
-        } catch (saveErr) {
-          console.error('Error saving CV:', saveErr)
-        }
-      }
+      await saveCv(json)
+      setSavedCvData(json)
+      setSaveSuccess('CV-то беше запазено успешно във вашия профил.')
     } catch (err) {
       console.error(err)
-      setFeedback(prev => prev + `\n\n**Грешка при генериране:** ${err.message || 'Неуспешно извличане.'}`)
+      setSaveError(err.message || 'Неуспешно запазване на CV. Опитайте отново.')
     } finally {
-      setGeneratingWebsite(false)
+      setSavingCv(false)
     }
   }
 
+  const handleSkipSaveCv = () => {
+    setShowSaveCvDialog(false)
+    setSavedCvData(null)
+    setSaveError('')
+    setSaveSuccess('')
+  }
+
   const handleClearAll = () => {
-    setResumeFile(null); setResumeName(''); setJdText('')
-    setFeedback(''); setCvWebsiteData(null); setShowWebsiteDialog(false); setIsStreaming(false)
+    setResumeFile(null)
+    setResumeName('')
+    setJdText('')
+    setFeedback('')
+    setIsStreaming(false)
+    setShowSaveCvDialog(false)
+    setSavingCv(false)
+    setSavedCvData(null)
+    setSaveSuccess('')
+    setSaveError('')
   }
 
   useEffect(() => {
-    document.body.style.overflow = (loading || generatingWebsite) ? 'hidden' : ''
+    document.body.style.overflow = (loading || savingCv) ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
-  }, [loading, generatingWebsite])
+  }, [loading, savingCv])
 
   const mdComponents = {
     h1: ({ ...p }) => <h1 className="md" style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, color: 'var(--ink)', margin: '24px 0 12px', letterSpacing: '-0.02em' }} {...p} />,
@@ -145,43 +213,45 @@ function Analyze() {
         </div>
       )}
 
-      {/* ── Generating website overlay ── */}
-      {generatingWebsite && (
+      {/* ── Saving CV overlay ── */}
+      {savingCv && (
         <div className="loading-overlay">
           <div className="loading-card">
             <div className="spinner" />
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
-              Генериране на CV сайт…
+              Запазване на CV…
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
-              Извличаме структурирани данни и прилагаме шаблон
+              Извличаме структурираните данни и ги добавяме към профила ви
             </p>
           </div>
         </div>
       )}
 
-      {/* ── Website dialog ── */}
-      {showWebsiteDialog && !cvWebsiteData && (
+      {/* ── Save CV dialog ── */}
+      {showSaveCvDialog && (
         <div className="loading-overlay">
           <div className="loading-card" style={{ textAlign: 'left' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <HiSparkles style={{ width: 18, height: 18, color: 'var(--brand)' }} />
+                <HiSave style={{ width: 18, height: 18, color: 'var(--brand)' }} />
               </div>
               <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', color: 'var(--ink)' }}>
-                AI предложение
+                Да запазим ли CV-то?
               </h3>
             </div>
+
             <p style={{ fontSize: '0.9rem', color: 'var(--ink-60)', lineHeight: 1.65, marginBottom: 24 }}>
-              Анализът е готов! Искате ли да генерирам красив уебсайт шаблон, базиран на вашето CV?
+              Анализът е готов. Искате ли AI да извлече информацията от това CV и да я запази във вашия профил? След това ще можете да я използвате в страницата с шаблони.
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowWebsiteDialog(false)} className="btn-secondary">
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button onClick={handleSkipSaveCv} className="btn-secondary">
                 Не, благодаря
               </button>
-              <button onClick={handleGenerateWebsite} className="btn-primary">
-                <HiSparkles style={{ width: 14, height: 14 }} />
-                Да, създай сайт
+              <button onClick={handleSaveScrapedCv} className="btn-primary">
+                <HiSave style={{ width: 14, height: 14 }} />
+                Да, запази CV
               </button>
             </div>
           </div>
@@ -263,7 +333,7 @@ function Analyze() {
                 <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
               </label>
               {resumeFile && (
-                <button onClick={() => { setResumeFile(null); setResumeName('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
+                <button onClick={() => { setResumeFile(null); setResumeName(''); setSavedCvData(null); setSaveSuccess(''); setSaveError('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
                   <HiX style={{ width: 13, height: 13 }} />
                   Изчисти
                 </button>
@@ -330,6 +400,38 @@ function Analyze() {
         </button>
       </div>
 
+      {/* ── Save messages ── */}
+      {saveSuccess && (
+        <div className="alert alert-success" style={{ marginBottom: 24 }}>
+          <HiCheck style={{ width: 15, height: 15 }} />
+          <span>{saveSuccess}</span>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="alert alert-error" style={{ marginBottom: 24 }}>
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      {savedCvData && (
+        <div className="card anim-fade-up" style={{ padding: 18, marginBottom: 28, border: '1px solid var(--brand-mid)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <HiSave style={{ width: 16, height: 16, color: 'var(--brand)' }} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
+                CV-то е готово за шаблоните
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--ink-50)', margin: 0 }}>
+                Можете да го изберете от страницата с CV шаблони.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Feedback ── */}
       {feedback && (
         <div className="feedback-wrapper" style={{ marginBottom: 32 }}>
@@ -353,10 +455,8 @@ function Analyze() {
         </div>
       )}
 
-      {cvWebsiteData && <CvWebsiteTemplate data={cvWebsiteData} />}
-
       {/* Empty state */}
-      {!feedback && !loading && (
+      {!feedback && !loading && !savingCv && (
         <div className="anim-fade-up d-4" style={{ textAlign: 'center', padding: '52px 24px', color: 'var(--ink-40)' }}>
           <HiDocumentText style={{ width: 36, height: 36, margin: '0 auto 10px', display: 'block', opacity: 0.35 }} />
           <p style={{ fontSize: '0.9rem' }}>Качете резюме и описание на длъжността, за да започнете</p>
