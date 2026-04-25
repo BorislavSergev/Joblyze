@@ -1,167 +1,105 @@
 import { Link } from 'react-router-dom'
-import { HiHome, HiChartBar, HiInformationCircle, HiMail, HiHeart } from 'react-icons/hi'
+import { HiHome, HiChartBar, HiInformationCircle, HiMail, HiTemplate } from 'react-icons/hi'
 import { FaBrain, FaGithub, FaLinkedin, FaTwitter } from 'react-icons/fa'
 
 function Footer() {
-  const currentYear = new Date().getFullYear()
+  const year = new Date().getFullYear()
 
   return (
-    <footer className="bg-white border-t border-[#2d3951]/10 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-8 sm:mb-12">
-          <div className="lg:col-span-1">
-            <Link 
-              to="/"
-              className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 hover:opacity-80 transition-opacity"
-            >
-              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-[#175bbd] to-[#175bbd]/80 rounded-xl shadow-lg shadow-[#175bbd]/20">
-                <FaBrain className="text-lg sm:text-xl text-white" />
+    <footer className="footer">
+      <div className="page-container" style={{ paddingTop: 'clamp(40px,6vw,64px)', paddingBottom: 'clamp(24px,4vw,40px)' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,180px),1fr))',
+          gap: 'clamp(28px,5vw,48px)',
+          marginBottom: 40,
+        }}>
+          {/* Brand */}
+          <div>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 14 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaBrain style={{ width: 14, height: 14, color: '#fff' }} />
               </div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#2d3951] tracking-tight">
-                Joblyze
-              </span>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.0625rem', color: '#fff' }}>Joblyze</span>
             </Link>
-            <p className="text-sm sm:text-base text-[#2d3951]/60 leading-relaxed mb-4 sm:mb-6">
-              Трансформирайте обявите си за работа с помощта на изкуствен интелект. Получете практически обратна връзка и подобрете привличането на таланти.
+            <p style={{ fontSize: '0.875rem', lineHeight: 1.65, marginBottom: 20, maxWidth: 220 }}>
+              AI платформа за анализ на резюмета и обяви за работа.
             </p>
-            <div className="flex gap-3 sm:gap-4">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-xl hover:from-[#175bbd]/20 hover:to-[#175bbd]/10 text-[#175bbd] transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-[#175bbd]/20"
-                aria-label="GitHub"
-              >
-                <FaGithub className="w-5 h-5" />
-              </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-xl hover:from-[#175bbd]/20 hover:to-[#175bbd]/10 text-[#175bbd] transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-[#175bbd]/20"
-                aria-label="LinkedIn"
-              >
-                <FaLinkedin className="w-5 h-5" />
-              </a>
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-xl hover:from-[#175bbd]/20 hover:to-[#175bbd]/10 text-[#175bbd] transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-[#175bbd]/20"
-                aria-label="Twitter"
-              >
-                <FaTwitter className="w-5 h-5" />
-              </a>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { href: 'https://github.com', Icon: FaGithub, label: 'GitHub' },
+                { href: 'https://linkedin.com', Icon: FaLinkedin, label: 'LinkedIn' },
+                { href: 'https://twitter.com', Icon: FaTwitter, label: 'Twitter' },
+              ].map(({ href, Icon, label }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                  className="footer-link"
+                  style={{
+                    width: 34, height: 34, borderRadius: 8,
+                    background: 'rgba(255,255,255,0.07)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    transition: 'background 0.15s, color 0.15s', flexShrink: 0,
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = '#fff' }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+                >
+                  <Icon style={{ width: 14, height: 14 }} />
+                </a>
+              ))}
             </div>
           </div>
 
+          {/* Nav */}
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-[#2d3951] mb-4 sm:mb-6">
-              Навигация
-            </h3>
-            <ul className="space-y-3 sm:space-y-4">
-              <li>
-                <Link
-                  to="/"
-                  className="flex items-center gap-2 text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300 group"
-                >
-                  <HiHome className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>Начало</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/analyze"
-                  className="flex items-center gap-2 text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300 group"
-                >
-                  <HiChartBar className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>Анализиране</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/about"
-                  className="flex items-center gap-2 text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300 group"
-                >
-                  <HiInformationCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>За нас</span>
-                </Link>
-              </li>
+            <p className="footer-title">Навигация</p>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { to: '/',          label: 'Начало',     Icon: HiHome },
+                { to: '/analyze',   label: 'Анализиране', Icon: HiChartBar },
+                { to: '/templates', label: 'Шаблони',    Icon: HiTemplate },
+                { to: '/about',     label: 'За нас',     Icon: HiInformationCircle },
+              ].map(({ to, label, Icon }) => (
+                <li key={to}>
+                  <Link to={to} className="footer-link">
+                    <Icon style={{ width: 14, height: 14 }} />
+                    {label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
+          {/* Resources */}
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-[#2d3951] mb-4 sm:mb-6">
-              Ресурси
-            </h3>
-            <ul className="space-y-3 sm:space-y-4">
-              <li>
-                <a
-                  href="#"
-                  className="text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300"
-                >
-                  Документация
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300"
-                >
-                  API Референция
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300"
-                >
-                  Често задавани въпроси
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300"
-                >
-                  Поддръжка
-                </a>
-              </li>
+            <p className="footer-title">Ресурси</p>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {['Документация', 'API Референция', 'Често задавани въпроси', 'Поддръжка'].map(item => (
+                <li key={item}>
+                  <a href="#" className="footer-link">{item}</a>
+                </li>
+              ))}
             </ul>
           </div>
 
+          {/* Contact */}
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-[#2d3951] mb-4 sm:mb-6">
-              Контакт
-            </h3>
-            <ul className="space-y-3 sm:space-y-4">
+            <p className="footer-title">Контакт</p>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <li>
-                <a
-                  href="mailto:contact@joblyze.com"
-                  className="flex items-center gap-2 text-sm sm:text-base text-[#2d3951]/70 hover:text-[#175bbd] transition-colors duration-300 group"
-                >
-                  <HiMail className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>contact@joblyze.com</span>
+                <a href="mailto:contact@joblyze.com" className="footer-link">
+                  <HiMail style={{ width: 14, height: 14 }} />
+                  contact@joblyze.com
                 </a>
               </li>
-              <li className="text-sm sm:text-base text-[#2d3951]/60">
-                Русе, България
-              </li>
+              <li style={{ fontSize: '0.875rem' }}>Русе, България</li>
             </ul>
           </div>
         </div>
 
-        <div className="pt-8 sm:pt-10 border-t border-[#2d3951]/10">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
-            <p className="text-sm sm:text-base text-[#2d3951]/60 text-center sm:text-left">
-              © {currentYear} Joblyze. Всички права запазени.
-            </p>
-            <div className="flex items-center gap-1 sm:gap-2 text-sm sm:text-base text-[#2d3951]/60">
-              <span>Направено с</span>
-              <HiHeart className="w-4 h-4 sm:w-5 sm:h-5 text-[#175bbd] animate-pulse" />
-              <span>в България</span>
-            </div>
-          </div>
+        {/* Bottom */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <p style={{ fontSize: '0.8125rem' }}>© {year} Joblyze. Всички права запазени.</p>
+          <p style={{ fontSize: '0.8125rem' }}>Направено с ❤ в България</p>
         </div>
       </div>
     </footer>
@@ -169,4 +107,3 @@ function Footer() {
 }
 
 export default Footer
-

@@ -1,349 +1,358 @@
-import { useState, useEffect } from 'react'
-import { HiUpload, HiClipboardCopy, HiX, HiSparkles } from 'react-icons/hi'
-import { FaFileUpload, FaCheckCircle } from 'react-icons/fa'
+import { useState, useEffect, useCallback } from 'react'
+import { HiUpload, HiClipboardCopy, HiX, HiSparkles, HiDocumentText, HiCheck } from 'react-icons/hi'
+import { FaFileUpload } from 'react-icons/fa'
+import ReactMarkdown from 'react-markdown'
 import { analyzeResumeWithGemini, buildCvWebsiteDataWithGemini } from '../services/geminiService'
-import Templates from './Templates'
 import CvWebsiteTemplate from './CvWebsiteTemplate'
 
 
 function Analyze() {
-    const [resumeFile, setResumeFile] = useState(null)
-    const [resumeName, setResumeName] = useState('')
-    const [resumeDragging, setResumeDragging] = useState(false)
-    const [jdText, setJdText] = useState('')
-    const [feedback, setFeedback] = useState('')
-    const [loading, setLoading] = useState(false)
-    const [showWebsiteDialog, setShowWebsiteDialog] = useState(false)
-    const [generatingWebsite, setGeneratingWebsite] = useState(false)
-    const [cvWebsiteData, setCvWebsiteData] = useState(null)
-    const handleResumeDragOver = (e) => {
-        e.preventDefault()
-        setResumeDragging(true)
-    }
-    const handleResumeDragLeave = (e) => {
-        e.preventDefault()
-        setResumeDragging(false)
-    }
-    const handleResumeDrop = (e) => {
-        e.preventDefault()
-        setResumeDragging(false)
-        const droppedFile = e.dataTransfer.files[0]
-        if (droppedFile && (droppedFile.type === 'application/pdf' || droppedFile.type === 'text/plain')) {
-            setResumeFile(droppedFile)
-            setResumeName(droppedFile.name)
+  const [resumeFile, setResumeFile]           = useState(null)
+  const [resumeName, setResumeName]           = useState('')
+  const [resumeDragging, setResumeDragging]   = useState(false)
+  const [jdText, setJdText]                   = useState('')
+  const [feedback, setFeedback]               = useState('')
+  const [loading, setLoading]                 = useState(false)
+  const [isStreaming, setIsStreaming]         = useState(false)
+  const [showWebsiteDialog, setShowWebsiteDialog] = useState(false)
+  const [generatingWebsite, setGeneratingWebsite] = useState(false)
+  const [cvWebsiteData, setCvWebsiteData]     = useState(null)
+
+  const canSubmit = resumeFile && jdText.trim() && !loading
+
+  const handleResumeDragOver  = useCallback((e) => { e.preventDefault(); setResumeDragging(true) }, [])
+  const handleResumeDragLeave = useCallback((e) => { e.preventDefault(); setResumeDragging(false) }, [])
+  const handleResumeDrop = useCallback((e) => {
+    e.preventDefault(); setResumeDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) { setResumeFile(f); setResumeName(f.name) }
+  }, [])
+  const handleResumeChange = useCallback((e) => {
+    const f = e.target.files[0]
+    if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) { setResumeFile(f); setResumeName(f.name) }
+  }, [])
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+    setLoading(true); setFeedback(''); setIsStreaming(false)
+    setCvWebsiteData(null); setShowWebsiteDialog(false)
+
+    try {
+      const stream = await analyzeResumeWithGemini(resumeFile, jdText)
+      let accumulated = '', buffer = '', firstChunk = false
+
+      for await (const chunk of stream) {
+        let text = ''
+        if (typeof chunk === 'string') text = chunk
+        else if (chunk?.text) text = chunk.text
+        else if (chunk?.candidates?.[0]?.content?.parts?.[0]?.text) text = chunk.candidates[0].content.parts[0].text
+        else if (chunk?.delta?.text) text = chunk.delta.text
+
+        if (text) {
+          if (!firstChunk) { firstChunk = true; setLoading(false); setIsStreaming(true) }
+          buffer += text
+          const words = buffer.split(/(\s+)/)
+          buffer = words.pop() || ''
+          for (const word of words) {
+            accumulated += word
+            setFeedback(accumulated)
+            await new Promise(r => setTimeout(r, 20))
+          }
         }
+      }
+      if (buffer) { accumulated += buffer; setFeedback(accumulated) }
+      setIsStreaming(false)
+      if (accumulated.trim()) setShowWebsiteDialog(true)
+    } catch (err) {
+      console.error(err)
+      setFeedback(`**Грешка:** ${err.message || 'Неуспешен анализ. Проверете API ключа и опитайте отново.'}`)
+      setIsStreaming(false)
+    } finally {
+      setLoading(false)
     }
-    const handleResumeChange = (e) => {
-        const selectedFile = e.target.files[0]
-        if (selectedFile && (selectedFile.type === 'application/pdf' || selectedFile.type === 'text/plain')) {
-            setResumeFile(selectedFile)
-            setResumeName(selectedFile.name)
-        }
+  }
+
+  const handleGenerateWebsite = async () => {
+    if (!resumeFile) return
+    setGeneratingWebsite(true); setShowWebsiteDialog(false)
+    try {
+      const json = await buildCvWebsiteDataWithGemini(resumeFile)
+      setCvWebsiteData(json)
+    } catch (err) {
+      console.error(err)
+      setFeedback(prev => prev + `\n\n**Грешка при генериране:** ${err.message || 'Неуспешно извличане.'}`)
+    } finally {
+      setGeneratingWebsite(false)
     }
-    const handleResumeClear = () => {
-        setResumeFile(null)
-        setResumeName('')
-    }
+  }
 
-    const handleJdTextChange = (e) => {
-        setJdText(e.target.value)
-    }
-    const handleJdClear = () => {
-        setJdText('')
-    }
+  const handleClearAll = () => {
+    setResumeFile(null); setResumeName(''); setJdText('')
+    setFeedback(''); setCvWebsiteData(null); setShowWebsiteDialog(false); setIsStreaming(false)
+  }
 
-    const handleSubmit = async () => {
-        if (!resumeFile || !jdText.trim()) return
-        setLoading(true)
-        setFeedback('')
-        setCvWebsiteData(null)
-        setShowWebsiteDialog(false)
-        
-        try {
-            const stream = await analyzeResumeWithGemini(resumeFile, jdText)
-            
-            let accumulatedText = ''
-            let buffer = ''
-            let firstChunkReceived = false
-            
-            for await (const chunk of stream) {
-                let chunkText = ''
-                
-                if (typeof chunk === 'string') {
-                    chunkText = chunk
-                } else if (chunk?.text) {
-                    chunkText = chunk.text
-                } else if (chunk?.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    chunkText = chunk.candidates[0].content.parts[0].text
-                } else if (chunk?.delta?.text) {
-                    chunkText = chunk.delta.text
-                }
-                
-                if (chunkText) {
-                    if (!firstChunkReceived) {
-                        firstChunkReceived = true
-                        setLoading(false)
-                    }
-                    
-                    buffer += chunkText
-                    
-                    const words = buffer.split(/(\s+)/)
-                    buffer = words.pop() || ''
-                    
-                    for (const word of words) {
-                        accumulatedText += word
-                        setFeedback(accumulatedText)
-                        await new Promise(resolve => setTimeout(resolve, 30))
-                    }
-                }
-            }
-            
-            if (buffer) {
-                accumulatedText += buffer
-                setFeedback(accumulatedText)
-            }
+  useEffect(() => {
+    document.body.style.overflow = (loading || generatingWebsite) ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [loading, generatingWebsite])
 
-            if (accumulatedText.trim()) {
-                setShowWebsiteDialog(true)
-            }
-        } catch (error) {
-            console.error('Analysis error:', error)
-            setFeedback(`Грешка: ${error.message || 'Неуспешно анализиране на резюмето. Моля, проверете вашия API ключ и опитайте отново.'}`)
-        } finally {
-            setLoading(false)
-        }
-    }
+  const mdComponents = {
+    h1: ({ ...p }) => <h1 className="md" style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, color: 'var(--ink)', margin: '24px 0 12px', letterSpacing: '-0.02em' }} {...p} />,
+    h2: ({ ...p }) => <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--ink)', margin: '22px 0 10px', paddingLeft: 12, borderLeft: '3px solid var(--brand)' }} {...p} />,
+    h3: ({ ...p }) => <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--brand)', margin: '16px 0 8px' }} {...p} />,
+    h4: ({ ...p }) => <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink)', margin: '12px 0 6px' }} {...p} />,
+    p:  ({ ...p }) => <p  style={{ fontSize: '0.9375rem', color: 'var(--ink-60)', lineHeight: 1.75, marginBottom: 12 }} {...p} />,
+    ul: ({ ...p }) => <ul style={{ paddingLeft: 0, marginBottom: 12, listStyle: 'none' }} {...p} />,
+    ol: ({ ...p }) => <ol style={{ paddingLeft: 0, marginBottom: 12, listStyle: 'none', counterReset: 'item' }} {...p} />,
+    li: ({ ordered, ...p }) => (
+      <li style={{ fontSize: '0.9375rem', color: 'var(--ink-60)', lineHeight: 1.7, marginBottom: 5, paddingLeft: 18, position: 'relative' }}>
+        <span style={{ position: 'absolute', left: 0, color: 'var(--brand)', fontWeight: 700 }}>{ordered ? '›' : '—'}</span>
+        {p.children}
+      </li>
+    ),
+    strong:     ({ ...p }) => <strong style={{ color: 'var(--ink)', fontWeight: 600 }} {...p} />,
+    hr:         ({ ...p }) => <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '20px 0' }} {...p} />,
+    blockquote: ({ ...p }) => <blockquote style={{ borderLeft: '3px solid var(--brand)', paddingLeft: 14, margin: '14px 0', color: 'var(--ink-60)', fontStyle: 'italic' }} {...p} />,
+    code:       ({ ...p }) => <code style={{ fontSize: '0.85em', background: 'var(--surface-2)', borderRadius: 5, padding: '1px 6px', color: 'var(--brand-dark)', fontFamily: 'monospace' }} {...p} />,
+  }
 
-    const handleGenerateWebsite = async () => {
-        if (!resumeFile) return
+  return (
+    <div className="page-container" style={{ paddingTop: 'clamp(40px,6vw,68px)', paddingBottom: 'clamp(40px,6vw,68px)' }}>
 
-        setGeneratingWebsite(true)
-        setShowWebsiteDialog(false)
-
-        try {
-            const jsonData = await buildCvWebsiteDataWithGemini(resumeFile)
-            setCvWebsiteData(jsonData)
-        } catch (error) {
-            console.error('CV website generation error:', error)
-            setFeedback((prev) => {
-                const errorMessage = `\n\nГрешка при генериране на CV website: ${error.message || 'Неуспешно извличане на JSON данни.'}`
-                return prev ? prev + errorMessage : errorMessage
-            })
-        } finally {
-            setGeneratingWebsite(false)
-        }
-    }
-    const handleClearAll = () => {
-        handleResumeClear()
-        handleJdClear()
-        setFeedback('')
-        setCvWebsiteData(null)
-        setShowWebsiteDialog(false)
-    }
-
-    useEffect(() => {
-        if (loading) {
-            document.body.style.overflow = 'hidden'
-        } else {
-            document.body.style.overflow = 'unset'
-        }
-
-        return () => {
-            document.body.style.overflow = 'unset'
-        }
-    }, [loading])
-
-    return (
-        <div className="w-full relative">
-            {loading && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl sm:rounded-3xl p-8 sm:p-12 shadow-2xl max-w-md mx-4 flex flex-col items-center gap-6">
-                        <div className="relative w-16 h-16 sm:w-20 sm:h-20">
-                            <div className="absolute inset-0 border-4 border-[#175bbd]/20 rounded-full"></div>
-                            <div className="absolute inset-0 border-4 border-transparent border-t-[#175bbd] rounded-full animate-spin"></div>
-                            <div className="absolute inset-2 border-4 border-transparent border-r-[#175bbd]/60 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="text-xl sm:text-2xl font-bold text-[#2d3951] mb-2 flex items-center justify-center gap-2">
-                                <HiSparkles className="w-6 h-6 sm:w-7 sm:h-7 text-[#175bbd] animate-pulse" />
-                                <span>AI мисли...</span>
-                            </h3>
-                            <p className="text-sm sm:text-base text-[#2d3951]/60">
-                                Моля, изчакайте докато анализираме вашето резюме
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div className="text-center mb-16 sm:mb-20 lg:mb-28 px-4">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#2d3951] mb-6 sm:mb-8 lg:mb-10 leading-tight tracking-tight">
-                    Анализиране
-                    <span className="block text-[#175bbd] mt-3 sm:mt-4">
-                    Получете персонализирана обратна връзка с AI
-                    </span>
-                </h1>
-                <p className="text-base sm:text-lg md:text-xl text-[#2d3951]/60 max-w-2xl mx-auto leading-relaxed font-normal">
-                Качете автобиографията си и описание на длъжността, за да получите практическа обратна връзка, задвижвана от изкуствен интелект, относно вашата пригодност и предложения за подобрение.
-                </p>
-            </div>
-
-            <div className="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-10 mb-12">
-                <div>
-                    <h2 className="text-lg font-bold text-[#2d3951] mb-4 flex items-center gap-2">
-                        <FaFileUpload className="w-5 h-5 text-[#175bbd]" /> Резюме
-                    </h2>
-                    <div
-                        className={`relative border-2 border-dashed rounded-2xl p-8 transition-all duration-500 ${resumeDragging
-                            ? 'border-[#175bbd] bg-gradient-to-br from-[#175bbd]/5 to-[#175bbd]/2 scale-[1.01] shadow-2xl shadow-[#175bbd]/25'
-                            : 'border-[#2d3951]/10 bg-white hover:border-[#175bbd]/30 hover:shadow-2xl hover:shadow-[#175bbd]/10'
-                        }`}
-                        onDragOver={handleResumeDragOver}
-                        onDragLeave={handleResumeDragLeave}
-                        onDrop={handleResumeDrop}
-                    >
-                        <div className="text-center">
-                            <div className="mb-6">
-                                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 transition-all duration-500 ${resumeDragging
-                                    ? 'bg-gradient-to-br from-[#175bbd] to-[#175bbd]/80 scale-110 shadow-2xl shadow-[#175bbd]/40'
-                                    : 'bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5'
-                                }`}>
-                                    <FaFileUpload
-                                        className={`w-8 h-8 transition-colors duration-500 ${resumeDragging ? 'text-white' : 'text-[#175bbd]'}`}
-                                    />
-                                </div>
-                            </div>
-                            <p className="text-base font-bold text-[#2d3951] mb-2">
-                                {resumeFile ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <FaCheckCircle className="w-4 h-4 text-[#175bbd]" />
-                                        <span className="text-[#175bbd] text-sm break-all">{resumeName}</span>
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center justify-center gap-2 text-sm">
-                                        <HiUpload className="w-4 h-4" />
-                                        Качване или плъзгане на резюмето (.pdf или .txt)
-                                    </span>
-                                )}
-                            </p>
-                            <p className="text-xs text-[#2d3951]/60 mb-6 font-medium">
-                                Поддържа .pdf, .txt • Максимален размер 10MB
-                            </p>
-                            <label className="inline-block">
-                                <span className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#175bbd] to-[#175bbd]/90 text-white rounded-xl font-bold text-sm cursor-pointer hover:from-[#175bbd]/90 hover:to-[#175bbd]/80 transition-all duration-300 shadow-2xl shadow-[#175bbd]/30 hover:shadow-[#175bbd]/40 hover:-translate-y-1 active:translate-y-0">
-                                    <HiUpload className="w-4 h-4" />
-                                    Изберете резюме
-                                </span>
-                                <input
-                                    type="file"
-                                    accept=".pdf,.txt"
-                                    onChange={handleResumeChange}
-                                    className="hidden"
-                                />
-                            </label>
-                            {resumeFile && (
-                                <button
-                                    onClick={handleResumeClear}
-                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 border border-[#2d3951]/10 text-[#2d3951] rounded-xl font-bold text-xs hover:bg-[#f8f9fb] hover:border-[#2d3951]/20 transition-all duration-300 shadow-sm hover:shadow-md"
-                                >
-                                    <HiX className="w-4 h-4" /> Изчистване
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h2 className="text-lg font-bold text-[#2d3951] mb-4 flex items-center gap-2">
-                        <HiClipboardCopy className="w-5 h-5 text-[#175bbd]" /> Описание на работата
-                    </h2>
-                    <div className="mt-6">
-                        <div className="relative">
-                            <textarea
-                                value={jdText}
-                                onChange={handleJdTextChange}
-                                placeholder="Копирайте текста на обявата за работа тук..."
-                                className="w-full h-40 p-4 border border-[#2d3951]/10 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#175bbd]/20 focus:border-[#175bbd] resize-none text-[#2d3951] bg-white placeholder-[#2d3951]/40 transition-all duration-300 font-normal text-sm leading-relaxed hover:border-[#175bbd]/20 shadow-sm hover:shadow-lg"
-                            />
-                            {jdText && (
-                                <div className="absolute top-3 right-3">
-                                    <span className="text-[10px] font-bold text-[#2d3951]/60 bg-[#f8f9fb] px-2 py-1 rounded-lg border border-[#2d3951]/10">
-                                        {jdText.length} символа
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end max-w-5xl mx-auto px-4 mb-8">
-                {(resumeFile || jdText) && (
-                    <button
-                        onClick={handleClearAll}
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-[#2d3951]/10 text-[#2d3951] rounded-xl font-bold text-sm hover:bg-[#f8f9fb] hover:border-[#2d3951]/20 transition-all duration-300 shadow-sm hover:shadow-md"
-                    >
-                        <HiX className="w-4 h-4" /> Изчистване на всички
-                    </button>
-                )}
-                <button
-                    onClick={handleSubmit}
-                    disabled={!resumeFile || !jdText.trim() || loading}
-                    className={`inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-bold text-lg transition-all duration-300 ${resumeFile && jdText.trim() && !loading
-                        ? 'bg-gradient-to-r from-[#175bbd] to-[#175bbd]/90 text-white hover:from-[#175bbd]/90 hover:to-[#175bbd]/80 cursor-pointer shadow-2xl shadow-[#175bbd]/30 hover:shadow-[#175bbd]/40 hover:-translate-y-1 active:translate-y-0'
-                        : 'bg-[#2d3951]/5 text-[#2d3951]/30 cursor-not-allowed border border-[#2d3951]/10'
-                    }`}
-                >
-                    <HiSparkles className="w-4 h-4" />
-                    {loading ? 'Анализиране...' : 'Анализиране'}
-                </button>
-            </div>
-
-            <Templates feedback={feedback} />
-            {cvWebsiteData && <CvWebsiteTemplate data={cvWebsiteData} />}
-
-            {showWebsiteDialog && !cvWebsiteData && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
-                    <div className="w-full max-w-lg bg-white rounded-3xl border border-[#175bbd]/10 shadow-2xl p-6 sm:p-8">
-                        <h3 className="text-2xl font-bold text-[#2d3951] flex items-center gap-2">
-                            <HiSparkles className="w-6 h-6 text-[#175bbd]" />
-                            AI Suggestion
-                        </h3>
-                        <p className="mt-4 text-[#2d3951]/80 leading-relaxed">
-                            Your analysis is ready. Do you want me to create a beautiful website template based on your CV?
-                        </p>
-                        <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-end">
-                            <button
-                                onClick={() => setShowWebsiteDialog(false)}
-                                className="px-5 py-2.5 rounded-xl border border-[#2d3951]/15 text-[#2d3951] font-semibold hover:bg-[#f8f9fb] transition-colors"
-                            >
-                                No, thanks
-                            </button>
-                            <button
-                                onClick={handleGenerateWebsite}
-                                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#175bbd] to-[#175bbd]/90 text-white font-semibold shadow-lg shadow-[#175bbd]/20 hover:from-[#175bbd]/90 hover:to-[#175bbd]/80 transition-all"
-                            >
-                                Yes, create website
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {generatingWebsite && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
-                    <div className="w-full max-w-md bg-white rounded-3xl border border-[#175bbd]/10 shadow-2xl p-8 text-center">
-                        <div className="mx-auto relative w-14 h-14">
-                            <div className="absolute inset-0 border-4 border-[#175bbd]/20 rounded-full"></div>
-                            <div className="absolute inset-0 border-4 border-transparent border-t-[#175bbd] rounded-full animate-spin"></div>
-                        </div>
-                        <h3 className="mt-5 text-xl font-bold text-[#2d3951]">Generating your CV website...</h3>
-                        <p className="mt-2 text-[#2d3951]/70">Extracting structured JSON and applying it to your template.</p>
-                    </div>
-                </div>
-            )}
+      {/* ── Loading overlay ── */}
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-card">
+            <div className="spinner" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
+              AI анализира…
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
+              Моля, изчакайте докато обработваме резюмето ви
+            </p>
+          </div>
         </div>
-    )
+      )}
+
+      {/* ── Generating website overlay ── */}
+      {generatingWebsite && (
+        <div className="loading-overlay">
+          <div className="loading-card">
+            <div className="spinner" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
+              Генериране на CV сайт…
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
+              Извличаме структурирани данни и прилагаме шаблон
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Website dialog ── */}
+      {showWebsiteDialog && !cvWebsiteData && (
+        <div className="loading-overlay">
+          <div className="loading-card" style={{ textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <HiSparkles style={{ width: 18, height: 18, color: 'var(--brand)' }} />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', color: 'var(--ink)' }}>
+                AI предложение
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--ink-60)', lineHeight: 1.65, marginBottom: 24 }}>
+              Анализът е готов! Искате ли да генерирам красив уебсайт шаблон, базиран на вашето CV?
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowWebsiteDialog(false)} className="btn-secondary">
+                Не, благодаря
+              </button>
+              <button onClick={handleGenerateWebsite} className="btn-primary">
+                <HiSparkles style={{ width: 14, height: 14 }} />
+                Да, създай сайт
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Page header ── */}
+      <div style={{ marginBottom: 'clamp(36px,6vw,60px)' }}>
+        <span className="chip chip-brand anim-fade-up" style={{ display: 'inline-flex', marginBottom: 14 }}>
+          <HiSparkles style={{ width: 11, height: 11 }} />
+          AI анализ
+        </span>
+        <h1 className="anim-fade-up d-1" style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(1.75rem,4vw,2.75rem)',
+          fontWeight: 800,
+          color: 'var(--ink)',
+          letterSpacing: '-0.03em',
+          lineHeight: 1.15,
+          marginBottom: 12,
+        }}>
+          Анализирайте резюмето си
+        </h1>
+        <p className="anim-fade-up d-2" style={{ fontSize: 'clamp(0.9rem,2vw,1.0625rem)', color: 'var(--ink-60)', maxWidth: 540, lineHeight: 1.7 }}>
+          Качете автобиографията си и описанието на длъжността за персонализиран AI доклад.
+        </p>
+      </div>
+
+      {/* ── Input grid ── */}
+      <div className="anim-fade-up d-2" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,320px),1fr))',
+        gap: 16,
+        marginBottom: 16,
+      }}>
+        {/* Resume drop zone */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+            <FaFileUpload style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.01em' }}>Резюме</span>
+            {resumeFile && (
+              <span className="chip chip-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>
+                <HiCheck style={{ width: 10, height: 10 }} />
+                {resumeName.length > 20 ? resumeName.slice(0, 20) + '…' : resumeName}
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`drop-zone${resumeDragging ? ' dragging' : ''}${resumeFile ? ' has-file' : ''}`}
+            onDragOver={handleResumeDragOver}
+            onDragLeave={handleResumeDragLeave}
+            onDrop={handleResumeDrop}
+            style={{ padding: 'clamp(28px,5vw,44px) 20px' }}
+          >
+            <div style={{
+              width: 48, height: 48, borderRadius: 13,
+              background: resumeFile ? 'var(--brand-light)' : resumeDragging ? 'var(--brand)' : 'var(--brand-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px',
+              transition: 'background 0.2s',
+            }}>
+              <FaFileUpload style={{ width: 20, height: 20, color: resumeDragging && !resumeFile ? '#fff' : 'var(--brand)', transition: 'color 0.2s' }} />
+            </div>
+
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: resumeFile ? 'var(--brand)' : 'var(--ink)', marginBottom: 6, textAlign: 'center' }}>
+              {resumeFile ? 'Файлът е качен успешно' : resumeDragging ? 'Пуснете файла тук' : 'Плъзнете или кликнете за качване'}
+            </p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--ink-40)', marginBottom: 18, textAlign: 'center' }}>
+              PDF или TXT · до 10 MB
+            </p>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <label>
+                <span className="btn-primary" style={{ padding: '9px 18px', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                  <HiUpload style={{ width: 13, height: 13 }} />
+                  {resumeFile ? 'Смени' : 'Избери файл'}
+                </span>
+                <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
+              </label>
+              {resumeFile && (
+                <button onClick={() => { setResumeFile(null); setResumeName('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
+                  <HiX style={{ width: 13, height: 13 }} />
+                  Изчисти
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Job description */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+            <HiClipboardCopy style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)' }}>Описание на длъжността</span>
+            {jdText && (
+              <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 6 }}>
+                {jdText.length} символа
+              </span>
+            )}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <textarea
+              className="form-textarea"
+              value={jdText}
+              onChange={e => setJdText(e.target.value)}
+              placeholder="Поставете текста на обявата за работа тук…"
+              style={{ minHeight: 'clamp(180px,28vw,280px)' }}
+            />
+            {jdText && (
+              <button
+                onClick={() => setJdText('')}
+                style={{
+                  position: 'absolute', top: 10, right: 10,
+                  width: 24, height: 24, borderRadius: 6,
+                  background: 'var(--surface-2)', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--ink-40)', cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--brand-light)'}
+                onMouseOut={e => e.currentTarget.style.background = 'var(--surface-2)'}
+              >
+                <HiX style={{ width: 12, height: 12 }} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Actions row ── */}
+      <div className="anim-fade-up d-3" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginBottom: 40, flexWrap: 'wrap' }}>
+        {(resumeFile || jdText) && (
+          <button onClick={handleClearAll} className="btn-secondary">
+            <HiX style={{ width: 14, height: 14 }} />
+            Изчисти всички
+          </button>
+        )}
+        <button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="btn-primary"
+          style={{ padding: '12px 24px', fontSize: '0.9375rem' }}
+        >
+          <HiSparkles style={{ width: 15, height: 15 }} />
+          {loading ? 'Анализиране…' : 'Анализирай сега'}
+        </button>
+      </div>
+
+      {/* ── Feedback ── */}
+      {feedback && (
+        <div className="feedback-wrapper" style={{ marginBottom: 32 }}>
+          <div className="feedback-header">
+            <HiSparkles style={{ width: 17, height: 17, color: '#fff', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
+              Обратна връзка с AI
+            </span>
+            {isStreaming && (
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div className="stream-dot" />
+                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)' }}>Стрийминг…</span>
+              </div>
+            )}
+          </div>
+          <div className="feedback-body">
+            <div className={isStreaming ? 'typing-cursor' : ''}>
+              <ReactMarkdown components={mdComponents}>{feedback}</ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cvWebsiteData && <CvWebsiteTemplate data={cvWebsiteData} />}
+
+      {/* Empty state */}
+      {!feedback && !loading && (
+        <div className="anim-fade-up d-4" style={{ textAlign: 'center', padding: '52px 24px', color: 'var(--ink-40)' }}>
+          <HiDocumentText style={{ width: 36, height: 36, margin: '0 auto 10px', display: 'block', opacity: 0.35 }} />
+          <p style={{ fontSize: '0.9rem' }}>Качете резюме и описание на длъжността, за да започнете</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default Analyze
-
