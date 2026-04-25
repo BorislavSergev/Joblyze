@@ -1,40 +1,110 @@
-import { FaBrain, FaUsers, FaRocket } from 'react-icons/fa'
-import { HiInformationCircle } from 'react-icons/hi'
+import { FaBrain, FaUsers, FaRocket, FaShieldAlt } from 'react-icons/fa'
+import { HiSparkles, HiArrowRight } from 'react-icons/hi'
+import { Link } from 'react-router-dom'
 
 function About() {
   return (
-    <div className="w-full max-w-5xl mx-auto px-4">
-      <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-        <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-2xl sm:rounded-3xl mb-6 sm:mb-8 shadow-lg">
-          <HiInformationCircle className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-[#175bbd]" />
-        </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#2d3951] mb-6 sm:mb-8 lg:mb-10 leading-tight tracking-tight">About Joblyze</h1>
-        <p className="text-base sm:text-lg md:text-xl text-[#2d3951]/60 max-w-3xl mx-auto leading-relaxed font-normal">
-          Joblyze е платформа, задвижвана от изкуствен интелект, предназначена да помогне на специалистите по подбор на персонал и HR специалистите да създават по-добри длъжностни характеристики. Нашите усъвършенствани алгоритми анализират обявите за работа за яснота, приобщаване и ефективност, предоставяйки практическа обратна връзка, за да ви помогнат да привлечете най-добрите кандидати.
-        </p>
-      </div>
+    <div className="page-container" style={{ paddingTop: 'clamp(40px,6vw,72px)', paddingBottom: 'clamp(40px,6vw,72px)' }}>
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-10 sm:mt-12 lg:mt-16">
-        <div className="group text-center p-6 sm:p-8 lg:p-10 bg-white rounded-2xl sm:rounded-3xl border border-[#2d3951]/5 hover:border-[#175bbd]/20 hover:shadow-2xl hover:shadow-[#175bbd]/10 hover:-translate-y-2 transition-all duration-500">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-xl sm:rounded-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
-            <FaBrain className="w-7 h-7 sm:w-8 sm:h-8 text-[#175bbd]" />
-          </div>
-          <h3 className="text-lg sm:text-xl font-bold text-[#2d3951] mb-2 sm:mb-3">AI-Powered</h3>
-          <p className="text-sm sm:text-base text-[#2d3951]/60 leading-relaxed">Advanced machine learning algorithms</p>
+        {/* ── Header ── */}
+        <div style={{ marginBottom: 'clamp(48px,7vw,72px)' }}>
+          <span className="chip chip-brand anim-fade-up" style={{ marginBottom: 16, display: 'inline-flex' }}>
+            <HiSparkles style={{ width: 11, height: 11 }} />
+            За нас
+          </span>
+          <h1 className="section-title anim-fade-up d-1" style={{ maxWidth: 560, margin: '0 0 16px' }}>
+            Какво е Joblyze?
+          </h1>
+          <p className="anim-fade-up d-2" style={{
+            fontSize: 'clamp(0.9375rem,2vw,1.0625rem)',
+            color: 'var(--ink-60)',
+            lineHeight: 1.75,
+            maxWidth: 600,
+          }}>
+            Joblyze е платформа, задвижвана от изкуствен интелект, предназначена да помогне
+            на специалистите по подбор на персонал и HR екипите да създават по-добри
+            длъжностни характеристики и да намерят идеалните кандидати.
+          </p>
         </div>
-        <div className="group text-center p-6 sm:p-8 lg:p-10 bg-white rounded-2xl sm:rounded-3xl border border-[#2d3951]/5 hover:border-[#175bbd]/20 hover:shadow-2xl hover:shadow-[#175bbd]/10 hover:-translate-y-2 transition-all duration-500">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-xl sm:rounded-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
-            <FaUsers className="w-7 h-7 sm:w-8 sm:h-8 text-[#175bbd]" />
+
+        {/* ── Mission ── */}
+        <div className="card anim-fade-up d-2" style={{
+          padding: 'clamp(24px,4vw,40px)',
+          marginBottom: 20,
+          display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap',
+          background: 'linear-gradient(135deg,var(--brand-light) 0%,var(--white) 60%)',
+        }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 14, background: 'var(--brand)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: 'var(--shadow-brand)', flexShrink: 0,
+          }}>
+            <HiSparkles style={{ width: 22, height: 22, color: '#fff' }} />
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-[#2d3951] mb-2 sm:mb-3">For Everyone</h3>
-          <p className="text-sm sm:text-base text-[#2d3951]/60 leading-relaxed">Designed for recruiters and HR teams</p>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 10 }}>
+              Нашата мисия
+            </h2>
+            <p style={{ fontSize: '0.9375rem', color: 'var(--ink-60)', lineHeight: 1.75 }}>
+              Вярваме, че всяка организация заслужава достъп до интелигентни инструменти,
+              които правят набирането на персонал по-справедливо, по-ефективно и
+              по-приобщаващо. Нашите алгоритми анализират обявите за работа за яснота,
+              приобщаване и ефективност.
+            </p>
+          </div>
         </div>
-        <div className="group text-center p-6 sm:p-8 lg:p-10 bg-white rounded-2xl sm:rounded-3xl border border-[#2d3951]/5 hover:border-[#175bbd]/20 hover:shadow-2xl hover:shadow-[#175bbd]/10 hover:-translate-y-2 transition-all duration-500 sm:col-span-2 lg:col-span-1">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#175bbd]/10 to-[#175bbd]/5 rounded-xl sm:rounded-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-500">
-            <FaRocket className="w-7 h-7 sm:w-8 sm:h-8 text-[#175bbd]" />
+
+        {/* ── Feature grid ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,230px),1fr))', gap: 14, marginBottom: 24 }}>
+          {[
+            { icon: FaBrain,      title: 'AI-задвижван',  desc: 'Gemini AI с поддръжка за стрийминг на резултати в реално време.', delay: 'd-3' },
+            { icon: FaUsers,      title: 'За всички',     desc: 'За рекрутери, HR екипи и мениджъри без технически умения.',      delay: 'd-4' },
+            { icon: FaRocket,     title: 'Бърз и лесен',  desc: 'Пълен анализ за секунди с конкретни приложими препоръки.',       delay: 'd-3' },
+            { icon: FaShieldAlt,  title: 'Поверителност', desc: 'Документите ви не се съхраняват. Пълна поверителност.',          delay: 'd-4' },
+          ].map(({ icon: Icon, title, desc, delay }) => (
+            <div key={title} className={`card card-hover anim-fade-up ${delay}`} style={{ padding: 'clamp(20px,3vw,28px)', textAlign: 'center' }}>
+              <div className="icon-box icon-box-sm" style={{ margin: '0 auto 14px' }}>
+                <Icon style={{ width: 17, height: 17 }} />
+              </div>
+              <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)', marginBottom: 7 }}>{title}</h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)', lineHeight: 1.6 }}>{desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── CTA ── */}
+        <div className="card anim-fade-up d-5" style={{
+          padding: 'clamp(28px,5vw,48px)',
+          background: 'linear-gradient(135deg, var(--brand) 0%, #3b82f6 100%)',
+          border: 'none',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.25rem,2.5vw,1.625rem)', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em', marginBottom: 10 }}>
+              Готови ли сте да започнете?
+            </h2>
+            <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.72)', marginBottom: 28, lineHeight: 1.6 }}>
+              Анализирайте резюмето си безплатно и получете персонализирана обратна връзка.
+            </p>
+            <Link to="/register" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              padding: '12px 24px', background: '#fff', color: 'var(--brand)',
+              borderRadius: 'var(--radius)', fontWeight: 700, fontSize: '0.9rem',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.15)', textDecoration: 'none',
+              transition: 'transform 0.18s',
+            }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={e => e.currentTarget.style.transform = ''}
+            >
+              <HiSparkles style={{ width: 15, height: 15 }} />
+              Опитайте Joblyze
+              <HiArrowRight style={{ width: 14, height: 14 }} />
+            </Link>
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-[#2d3951] mb-2 sm:mb-3">Fast & Easy</h3>
-          <p className="text-sm sm:text-base text-[#2d3951]/60 leading-relaxed">Get results in seconds</p>
         </div>
       </div>
     </div>
@@ -42,4 +112,3 @@ function About() {
 }
 
 export default About
-
