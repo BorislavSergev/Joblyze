@@ -27,8 +27,8 @@ function Footer() {
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { href: 'https://github.com', Icon: FaGithub, label: 'GitHub' },
-                { href: 'https://linkedin.com', Icon: FaLinkedin, label: 'LinkedIn' },
+                { href: 'https://github.com/DenisBG312', Icon: FaGithub, label: 'GitHub' },
+                { href: 'https://www.linkedin.com/in/denis-tsranski/', Icon: FaLinkedin, label: 'LinkedIn' },
                 { href: 'https://twitter.com', Icon: FaTwitter, label: 'Twitter' },
               ].map(({ href, Icon, label }) => (
                 <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
