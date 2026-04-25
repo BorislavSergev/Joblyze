@@ -98,6 +98,420 @@ function normalizeCv(cv) {
   }
 }
 
+/* ─── Static HTML export helpers ────────────────────────────────────
+   These functions generate a complete standalone .html file from the
+   selected template and selected CV. The downloaded file can be opened
+   directly in the browser or hosted as a static CV website.
+──────────────────────────────────────────────────────────────────── */
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function safeFileName(value) {
+  return String(value || 'cv-website')
+    .toLowerCase()
+    .replace(/[^a-zа-я0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '') || 'cv-website'
+}
+
+function listItems(items, className) {
+  if (!Array.isArray(items) || items.length === 0) return ''
+  return items.map(item => `<span class="${className}">${escapeHtml(item)}</span>`).join('')
+}
+
+function bulletItems(items) {
+  if (!Array.isArray(items) || items.length === 0) return ''
+  return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+}
+
+function renderContact(data) {
+  return [data.email, data.phone, data.location, data.website]
+    .filter(Boolean)
+    .map(item => `<div class="contact-item">${escapeHtml(item)}</div>`)
+    .join('')
+}
+
+function renderExperience(data) {
+  if (!Array.isArray(data.experience) || data.experience.length === 0) return ''
+
+  return data.experience.map(exp => `
+    <article class="experience-item">
+      <div class="item-top">
+        <div>
+          <h3>${escapeHtml(exp.role)}</h3>
+          <p class="company">${escapeHtml(exp.company)}${exp.location ? ` · ${escapeHtml(exp.location)}` : ''}</p>
+        </div>
+        ${exp.period ? `<span class="period">${escapeHtml(exp.period)}</span>` : ''}
+      </div>
+      ${bulletItems(exp.bullets)}
+    </article>
+  `).join('')
+}
+
+function renderEducation(data) {
+  if (!Array.isArray(data.education) || data.education.length === 0) return ''
+
+  return data.education.map(edu => `
+    <article class="education-item">
+      <div class="item-top">
+        <div>
+          <h3>${escapeHtml(edu.degree)}</h3>
+          <p class="company">${escapeHtml(edu.school)}</p>
+          ${edu.gpa ? `<p class="meta">GPA: ${escapeHtml(edu.gpa)}</p>` : ''}
+        </div>
+        ${edu.period ? `<span class="period">${escapeHtml(edu.period)}</span>` : ''}
+      </div>
+    </article>
+  `).join('')
+}
+
+function renderCertifications(data) {
+  if (!Array.isArray(data.certifications) || data.certifications.length === 0) return ''
+  return listItems(data.certifications, 'pill')
+}
+
+function renderLanguages(data) {
+  if (!Array.isArray(data.languages) || data.languages.length === 0) return ''
+  return data.languages.map(lang => `<div class="language-item">${escapeHtml(lang)}</div>`).join('')
+}
+
+function renderNovaHtml(data) {
+  return `
+    <main class="cv nova">
+      <aside class="sidebar">
+        <div class="avatar">${escapeHtml(data.initials)}</div>
+        <h1>${escapeHtml(data.name)}</h1>
+        <p class="title">${escapeHtml(data.title)}</p>
+
+        <section>
+          <h2>Контакти</h2>
+          ${renderContact(data)}
+        </section>
+
+        <section>
+          <h2>Умения</h2>
+          <div class="skill-list">${listItems(data.skills, 'skill')}</div>
+        </section>
+
+        <section>
+          <h2>Езици</h2>
+          ${renderLanguages(data)}
+        </section>
+      </aside>
+
+      <section class="content">
+        <section class="block">
+          <h2>Профил</h2>
+          <p>${escapeHtml(data.summary)}</p>
+        </section>
+
+        <section class="block">
+          <h2>Опит</h2>
+          ${renderExperience(data)}
+        </section>
+
+        <section class="block">
+          <h2>Образование</h2>
+          ${renderEducation(data)}
+        </section>
+
+        <section class="block">
+          <h2>Сертификати</h2>
+          <div class="pill-list">${renderCertifications(data)}</div>
+        </section>
+      </section>
+    </main>
+  `
+}
+
+function renderOnyxHtml(data) {
+  return `
+    <main class="cv onyx">
+      <header class="hero">
+        <div class="avatar">${escapeHtml(data.initials)}</div>
+        <div>
+          <h1>${escapeHtml(data.name)}</h1>
+          <p class="title">${escapeHtml(data.title)}</p>
+          <div class="contact-row">${renderContact(data)}</div>
+        </div>
+      </header>
+
+      <div class="onyx-grid">
+        <section class="content">
+          <section class="block">
+            <h2>Профил</h2>
+            <p>${escapeHtml(data.summary)}</p>
+          </section>
+          <section class="block">
+            <h2>Опит</h2>
+            ${renderExperience(data)}
+          </section>
+        </section>
+
+        <aside class="side-panel">
+          <section class="block">
+            <h2>Умения</h2>
+            <div class="skill-list">${listItems(data.skills, 'skill')}</div>
+          </section>
+          <section class="block">
+            <h2>Образование</h2>
+            ${renderEducation(data)}
+          </section>
+          <section class="block">
+            <h2>Езици</h2>
+            ${renderLanguages(data)}
+          </section>
+          <section class="block">
+            <h2>Сертификати</h2>
+            <div class="pill-list">${renderCertifications(data)}</div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  `
+}
+
+function renderSlateHtml(data) {
+  return `
+    <main class="cv slate">
+      <header class="slate-header">
+        <div>
+          <h1>${escapeHtml(data.name)}</h1>
+          <p class="title">${escapeHtml(data.title)}</p>
+        </div>
+        <div class="contact-stack">${renderContact(data)}</div>
+      </header>
+
+      <section class="block">
+        <h2>Резюме</h2>
+        <p>${escapeHtml(data.summary)}</p>
+      </section>
+
+      <section class="block">
+        <h2>Трудов стаж</h2>
+        ${renderExperience(data)}
+      </section>
+
+      <section class="block">
+        <h2>Образование</h2>
+        ${renderEducation(data)}
+      </section>
+
+      <section class="two-cols">
+        <div class="block">
+          <h2>Технологии</h2>
+          <div class="pill-list">${listItems(data.skills, 'pill')}</div>
+        </div>
+        <div class="block">
+          <h2>Езици</h2>
+          ${renderLanguages(data)}
+        </div>
+      </section>
+    </main>
+  `
+}
+
+function renderAuroraHtml(data) {
+  return `
+    <main class="cv aurora">
+      <header class="hero">
+        <div class="avatar">${escapeHtml(data.initials)}</div>
+        <div>
+          <h1>${escapeHtml(data.name)}</h1>
+          <p class="title">${escapeHtml(data.title)}</p>
+          <div class="contact-row">${renderContact(data)}</div>
+        </div>
+      </header>
+
+      <div class="top-skills">${listItems(data.skills, 'skill')}</div>
+
+      <div class="aurora-grid">
+        <section class="content">
+          <section class="block">
+            <h2>Профил</h2>
+            <p>${escapeHtml(data.summary)}</p>
+          </section>
+          <section class="block">
+            <h2>Опит</h2>
+            ${renderExperience(data)}
+          </section>
+        </section>
+
+        <aside class="side-panel">
+          <section class="block">
+            <h2>Образование</h2>
+            ${renderEducation(data)}
+          </section>
+          <section class="block">
+            <h2>Езици</h2>
+            ${renderLanguages(data)}
+          </section>
+          <section class="block">
+            <h2>Сертификати</h2>
+            <div class="pill-list">${renderCertifications(data)}</div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  `
+}
+
+function getExportStyles(templateId) {
+  return `
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e2e8f0;
+      color: #1e293b;
+      font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.6;
+    }
+    .cv {
+      width: min(1100px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 32px; line-height: 1.05; letter-spacing: -0.04em; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px; }
+    h3 { font-size: 16px; margin-bottom: 2px; }
+    p { color: #475569; }
+    ul { margin: 10px 0 0; padding-left: 20px; }
+    li { margin-bottom: 6px; color: #475569; }
+    .avatar {
+      width: 78px;
+      height: 78px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .title { font-weight: 700; margin-top: 6px; }
+    .block { margin-bottom: 30px; }
+    .item-top { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+    .company { font-weight: 700; margin-top: 2px; }
+    .period { font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: 999px; padding: 4px 10px; }
+    .meta { font-size: 13px; color: #94a3b8; margin-top: 3px; }
+    .experience-item, .education-item { margin-bottom: 22px; }
+    .pill-list, .skill-list, .contact-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill, .skill { display: inline-flex; border-radius: 8px; padding: 6px 11px; font-size: 13px; font-weight: 700; }
+    .contact-item { font-size: 13px; word-break: break-word; }
+    .language-item { font-size: 14px; margin-bottom: 7px; }
+    .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+
+    .nova { display: grid; grid-template-columns: 280px 1fr; }
+    .nova .sidebar { background: linear-gradient(180deg, #1e3a8a 0%, #2563eb 100%); color: #fff; padding: 42px 28px; }
+    .nova .sidebar .avatar { margin: 0 auto 16px; border-radius: 50%; background: rgba(255,255,255,.18); border: 3px solid rgba(255,255,255,.35); }
+    .nova .sidebar h1 { font-size: 22px; text-align: center; }
+    .nova .sidebar .title { color: rgba(255,255,255,.72); text-align: center; font-size: 14px; margin-bottom: 34px; }
+    .nova .sidebar section { margin-top: 28px; }
+    .nova .sidebar h2 { color: rgba(255,255,255,.58); border-bottom: 1px solid rgba(255,255,255,.16); padding-bottom: 8px; }
+    .nova .sidebar .contact-item, .nova .sidebar .language-item { color: rgba(255,255,255,.82); }
+    .nova .sidebar .skill { background: rgba(255,255,255,.14); color: #fff; }
+    .nova .content { padding: 46px 48px; }
+    .nova .content h2 { color: #2563eb; border-bottom: 1px solid #bfdbfe; padding-bottom: 8px; }
+    .nova .period { color: #64748b; background: #f1f5f9; }
+    .nova .company { color: #2563eb; }
+    .nova .pill { color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; }
+
+    .onyx { background: #141414; color: #e2e8f0; }
+    .onyx .hero { display: flex; gap: 22px; align-items: center; padding: 46px 54px; border-bottom: 1px solid rgba(201,168,76,.22); }
+    .onyx .avatar { background: rgba(201,168,76,.16); color: #c9a84c; border: 2px solid rgba(201,168,76,.35); }
+    .onyx h1 { color: #fff; }
+    .onyx .title, .onyx h2, .onyx .company { color: #c9a84c; }
+    .onyx p, .onyx li, .onyx .contact-item, .onyx .language-item { color: rgba(255,255,255,.55); }
+    .onyx .onyx-grid { display: grid; grid-template-columns: 1fr 300px; }
+    .onyx .content { padding: 42px 48px; border-right: 1px solid rgba(255,255,255,.07); }
+    .onyx .side-panel { padding: 42px 30px; background: #1f1f1f; }
+    .onyx .period, .onyx .skill, .onyx .pill { color: #e2e8f0; background: rgba(255,255,255,.07); border: 1px solid rgba(201,168,76,.2); }
+
+    .slate { padding: 58px 70px; max-width: 900px; }
+    .slate .slate-header { display: flex; justify-content: space-between; gap: 30px; align-items: flex-end; border-bottom: 4px solid #0f172a; padding-bottom: 18px; margin-bottom: 38px; }
+    .slate .title { color: #64748b; text-transform: uppercase; letter-spacing: .08em; }
+    .slate h2 { color: #94a3b8; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    .slate .contact-stack { text-align: right; color: #94a3b8; }
+    .slate .period { color: #64748b; background: #f1f5f9; }
+    .slate .company { color: #475569; }
+    .slate .pill { color: #334155; background: #f1f5f9; border: 1px solid #e2e8f0; }
+
+    .aurora { background: #f0fdf4; }
+    .aurora .hero { display: flex; gap: 22px; align-items: center; padding: 46px 54px; background: linear-gradient(135deg, #064e3b 0%, #065f46 45%, #0d9488 100%); color: #fff; }
+    .aurora .avatar { background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.28); }
+    .aurora .title, .aurora .contact-item { color: rgba(255,255,255,.78); }
+    .aurora .top-skills { padding: 18px 54px; display: flex; flex-wrap: wrap; gap: 8px; background: #ecfdf5; border-bottom: 1px solid #a7f3d0; }
+    .aurora .skill, .aurora .pill { color: #0d9488; background: #fff; border: 1px solid #99f6e4; }
+    .aurora .aurora-grid { display: grid; grid-template-columns: 1fr 280px; }
+    .aurora .content { padding: 42px 48px; border-right: 1px solid #d1fae5; }
+    .aurora .side-panel { padding: 42px 28px; }
+    .aurora h2, .aurora .company { color: #0d9488; }
+    .aurora .experience-item, .aurora .education-item { background: #fff; border: 1px solid #d1fae5; border-left: 5px solid #0d9488; border-radius: 14px; padding: 18px; }
+    .aurora .period { color: #0d9488; background: #ecfdf5; }
+
+    @media (max-width: 760px) {
+      .cv, .nova, .onyx .onyx-grid, .aurora .aurora-grid, .two-cols { display: block; }
+      .nova .sidebar { text-align: left; }
+      .slate { padding: 36px 24px; }
+      .slate .slate-header, .item-top { display: block; }
+      .contact-stack { text-align: left !important; margin-top: 16px; }
+      .onyx .hero, .aurora .hero { padding: 32px 24px; align-items: flex-start; }
+      .nova .content, .onyx .content, .onyx .side-panel, .aurora .content, .aurora .side-panel { padding: 32px 24px; }
+      .aurora .top-skills { padding: 16px 24px; }
+    }
+  `
+}
+
+function buildCvWebsiteHtml(templateId, cv) {
+  const data = normalizeCv(cv)
+  const templateName = templateId || 'nova'
+
+  let body = renderNovaHtml(data)
+  if (templateName === 'onyx') body = renderOnyxHtml(data)
+  if (templateName === 'slate') body = renderSlateHtml(data)
+  if (templateName === 'aurora') body = renderAuroraHtml(data)
+
+  return `<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(data.name)} — CV Website</title>
+  <meta name="description" content="CV website на ${escapeHtml(data.name)}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>${getExportStyles(templateName)}</style>
+</head>
+<body>
+  ${body}
+</body>
+</html>`
+}
+
+function downloadCvWebsite(templateId, cv) {
+  const data = normalizeCv(cv)
+  const html = buildCvWebsiteHtml(templateId, data)
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+
+  a.href = url
+  a.download = `${safeFileName(data.name)}-${templateId || 'template'}.html`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 /* ════════════════════════════════════════════════════════════════════
    TEMPLATE 1 — NOVA  (modern sidebar, blue-indigo)
 ══════════════════════════════════════════════════════════════════════ */
@@ -739,13 +1153,26 @@ function Templates() {
   const [active, setActive] = useState('nova')
   const [selectedCv, setSelectedCv] = useState(null)
   const [showCvModal, setShowCvModal] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
 
   const activeT = TEMPLATES.find(t => t.id === active) || TEMPLATES[0]
   const previewCv = selectedCv || FALLBACK_CV
 
   function handleSelectCv(cv) {
     setSelectedCv(cv)
+    setDownloadError('')
     setShowCvModal(false)
+  }
+
+  function handleDownloadHtml() {
+    if (!selectedCv) {
+      setDownloadError('Моля, първо изберете CV, което да бъде поставено в шаблона.')
+      setShowCvModal(true)
+      return
+    }
+
+    setDownloadError('')
+    downloadCvWebsite(active, selectedCv)
   }
 
   return (
@@ -845,16 +1272,25 @@ function Templates() {
               {selectedCv ? 'Смени CV' : 'Използвай шаблона'}
             </button>
 
-            <button disabled style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 16px', borderRadius: 'var(--radius)', background: 'var(--white)', color: 'var(--ink-40)', fontWeight: 600, fontSize: '0.875rem', border: '1px solid var(--border)', cursor: 'not-allowed', fontFamily: 'var(--font)', opacity: 0.55 }}>
+            <button
+              onClick={handleDownloadHtml}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 16px', borderRadius: 'var(--radius)', background: 'var(--white)', color: selectedCv ? 'var(--ink)' : 'var(--ink-40)', fontWeight: 700, fontSize: '0.875rem', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedCv ? 1 : 0.75 }}
+            >
               <HiDownload style={{ width: 14, height: 14 }} />
               Изтегли HTML
             </button>
           </div>
 
+          {downloadError && (
+            <div className="alert alert-error">
+              <span>{downloadError}</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 14px', borderRadius: 'var(--radius)', background: 'var(--brand-light)', border: '1px solid var(--brand-mid)' }}>
             <HiLightningBolt style={{ width: 13, height: 13, color: 'var(--brand)', flexShrink: 0, marginTop: 2 }} />
             <p style={{ fontSize: '0.77rem', color: 'var(--brand-dark)', lineHeight: 1.65, margin: 0 }}>
-              <strong>Как работи:</strong> Избери шаблон, натисни <strong>Използвай шаблона</strong>, избери запазено CV и preview прозорецът ще се попълни автоматично.
+              <strong>Как работи:</strong> Избери шаблон, натисни <strong>Използвай шаблона</strong>, избери запазено CV и preview прозорецът ще се попълни автоматично. След това можеш да изтеглиш готов standalone HTML файл.
             </p>
           </div>
         </div>
