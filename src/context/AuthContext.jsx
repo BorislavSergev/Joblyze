@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
     const [session, setSession] = useState(null)
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [cvs, setCvs] = useState([])
 
     useEffect(() => {
         // Supabase React quickstart pattern:
@@ -57,6 +58,32 @@ export function AuthProvider({ children }) {
         }
 
         loadProfile()
+    }, [session?.user?.id])
+
+    useEffect(() => {
+        const loadCvs = async () => {
+            const userId = session?.user?.id
+
+            if (!userId) {
+                setCvs([])
+                return
+            }
+
+            const { data, error } = await supabase
+                .from('user_cvs')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                console.error('Error loading CVs:', error)
+                return
+            }
+
+            setCvs(data || [])
+        }
+
+        loadCvs()
     }, [session?.user?.id])
 
     const value = useMemo(() => {
@@ -160,9 +187,81 @@ export function AuthProvider({ children }) {
                     ...(prev || {}),
                     ...nextProfile
                 }))
+            },
+            // CV management functions
+            cvs,
+            saveCv: async (cvData) => {
+                const userId = session?.user?.id
+                if (!userId) {
+                    throw new Error('No authenticated user session.')
+                }
+
+                const payload = {
+                    user_id: userId,
+                    name: cvData.name || '',
+                    initials: cvData.initials || '',
+                    title: cvData.title || '',
+                    email: cvData.email || '',
+                    phone: cvData.phone || '',
+                    location: cvData.location || '',
+                    website: cvData.website || '',
+                    summary: cvData.summary || '',
+                    skills: cvData.skills || [],
+                    experience: cvData.experience || [],
+                    education: cvData.education || [],
+                    languages: cvData.languages || [],
+                    certifications: cvData.certifications || [],
+                    created_at: new Date().toISOString()
+                }
+
+                const { data, error } = await supabase
+                    .from('user_cvs')
+                    .insert(payload)
+                    .select()
+                    .single()
+
+                if (error) throw error
+
+                // Update local state
+                setCvs(prev => [data, ...prev])
+                return { data, error: null }
+            },
+            deleteCv: async (cvId) => {
+                const userId = session?.user?.id
+                if (!userId) {
+                    throw new Error('No authenticated user session.')
+                }
+
+                const { error } = await supabase
+                    .from('user_cvs')
+                    .delete()
+                    .eq('id', cvId)
+                    .eq('user_id', userId)
+
+                if (error) throw error
+
+                // Update local state
+                setCvs(prev => prev.filter(cv => cv.id !== cvId))
+                return { error: null }
+            },
+            refreshCvs: async () => {
+                const userId = session?.user?.id
+                if (!userId) return { data: null, error: null }
+
+                const { data, error } = await supabase
+                    .from('user_cvs')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+
+                if (!error) {
+                    setCvs(data || [])
+                }
+
+                return { data, error }
             }
         }
-    }, [session, loading, profile])
+    }, [session, loading, profile, cvs])
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

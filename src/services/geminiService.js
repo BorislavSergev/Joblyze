@@ -61,11 +61,13 @@ export async function buildCvWebsiteDataWithGemini(resumeFile) {
 
 Използвай точно тази схема:
 {
-  "fullName": "string",
+  "name": "string",
+  "initials": "string",
   "title": "string",
-  "location": "string",
   "email": "string",
   "phone": "string",
+  "location": "string",
+  "website": "string",
   "summary": "string",
   "skills": ["string"],
   "experience": [
@@ -73,30 +75,30 @@ export async function buildCvWebsiteDataWithGemini(resumeFile) {
       "role": "string",
       "company": "string",
       "period": "string",
-      "highlights": ["string"]
+      "location": "string",
+      "bullets": ["string"]
     }
   ],
   "education": [
     {
       "degree": "string",
       "school": "string",
-      "period": "string"
+      "period": "string",
+      "gpa": "string"
     }
   ],
-  "projects": [
-    {
-      "name": "string",
-      "description": "string",
-      "technologies": ["string"]
-    }
-  ],
-  "languages": ["string"]
+  "languages": ["string"],
+  "certifications": ["string"]
 }
 
 Правила:
 - Ако липсва стойност, върни празен стринг "" или празен списък [].
 - Не измисляй факти, които ги няма в CV.
 - Отговори само с JSON обект.
+- За initials използва първите две букви от името (в главни букви)
+- За period използва формат "2021 – Сега" или "2019 – 2021"
+- За gpa използва формат "5.80 / 6.00"
+- В bullets използва конкретни постижения от резюмето
 
 Resume Content:
 ${resumeContent}`

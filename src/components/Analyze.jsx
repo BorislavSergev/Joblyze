@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { HiUpload, HiClipboardCopy, HiX, HiSparkles, HiDocumentText, HiCheck } from 'react-icons/hi'
+import { HiUpload, HiClipboardCopy, HiX, HiSparkles, HiDocumentText, HiCheck, HiSave } from 'react-icons/hi'
 import { FaFileUpload } from 'react-icons/fa'
 import ReactMarkdown from 'react-markdown'
 import { analyzeResumeWithGemini, buildCvWebsiteDataWithGemini } from '../services/geminiService'
 import CvWebsiteTemplate from './CvWebsiteTemplate'
+import { useAuth } from '../context/AuthContext'
 
 
 function Analyze() {
+  const { user, saveCv } = useAuth()
   const [resumeFile, setResumeFile]           = useState(null)
   const [resumeName, setResumeName]           = useState('')
   const [resumeDragging, setResumeDragging]   = useState(false)
@@ -78,6 +80,15 @@ function Analyze() {
     try {
       const json = await buildCvWebsiteDataWithGemini(resumeFile)
       setCvWebsiteData(json)
+      
+      // Save CV to database if user is logged in
+      if (user) {
+        try {
+          await saveCv(json)
+        } catch (saveErr) {
+          console.error('Error saving CV:', saveErr)
+        }
+      }
     } catch (err) {
       console.error(err)
       setFeedback(prev => prev + `\n\n**Грешка при генериране:** ${err.message || 'Неуспешно извличане.'}`)
