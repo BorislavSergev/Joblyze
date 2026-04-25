@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { HiUpload, HiClipboardCopy, HiX, HiSparkles } from 'react-icons/hi'
 import { FaFileUpload, FaCheckCircle } from 'react-icons/fa'
-import ReactMarkdown from 'react-markdown'
-import { analyzeResumeWithGemini } from '../services/geminiService'
+import { analyzeResumeWithGemini, buildCvWebsiteDataWithGemini } from '../services/geminiService'
+import Templates from './Templates'
+import CvWebsiteTemplate from './CvWebsiteTemplate'
 
 
 function Analyze() {
@@ -12,6 +13,9 @@ function Analyze() {
     const [jdText, setJdText] = useState('')
     const [feedback, setFeedback] = useState('')
     const [loading, setLoading] = useState(false)
+    const [showWebsiteDialog, setShowWebsiteDialog] = useState(false)
+    const [generatingWebsite, setGeneratingWebsite] = useState(false)
+    const [cvWebsiteData, setCvWebsiteData] = useState(null)
     const handleResumeDragOver = (e) => {
         e.preventDefault()
         setResumeDragging(true)
@@ -52,6 +56,8 @@ function Analyze() {
         if (!resumeFile || !jdText.trim()) return
         setLoading(true)
         setFeedback('')
+        setCvWebsiteData(null)
+        setShowWebsiteDialog(false)
         
         try {
             const stream = await analyzeResumeWithGemini(resumeFile, jdText)
@@ -96,6 +102,10 @@ function Analyze() {
                 accumulatedText += buffer
                 setFeedback(accumulatedText)
             }
+
+            if (accumulatedText.trim()) {
+                setShowWebsiteDialog(true)
+            }
         } catch (error) {
             console.error('Analysis error:', error)
             setFeedback(`Грешка: ${error.message || 'Неуспешно анализиране на резюмето. Моля, проверете вашия API ключ и опитайте отново.'}`)
@@ -103,10 +113,32 @@ function Analyze() {
             setLoading(false)
         }
     }
+
+    const handleGenerateWebsite = async () => {
+        if (!resumeFile) return
+
+        setGeneratingWebsite(true)
+        setShowWebsiteDialog(false)
+
+        try {
+            const jsonData = await buildCvWebsiteDataWithGemini(resumeFile)
+            setCvWebsiteData(jsonData)
+        } catch (error) {
+            console.error('CV website generation error:', error)
+            setFeedback((prev) => {
+                const errorMessage = `\n\nГрешка при генериране на CV website: ${error.message || 'Неуспешно извличане на JSON данни.'}`
+                return prev ? prev + errorMessage : errorMessage
+            })
+        } finally {
+            setGeneratingWebsite(false)
+        }
+    }
     const handleClearAll = () => {
         handleResumeClear()
         handleJdClear()
         setFeedback('')
+        setCvWebsiteData(null)
+        setShowWebsiteDialog(false)
     }
 
     useEffect(() => {
@@ -266,31 +298,46 @@ function Analyze() {
                 </button>
             </div>
 
-            {feedback && (
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 bg-white border border-[#175bbd]/10 rounded-2xl shadow-lg text-[#2d3951]">
-                    <h3 className="font-bold text-lg mb-4 text-[#175bbd] flex items-center gap-2">
-                        <HiSparkles className="w-5 h-5" />
-                        Обратна връзка с AI
-                    </h3>
-                    <div className="prose prose-sm max-w-none text-[#2d3951] leading-relaxed">
-                        <ReactMarkdown
-                            components={{
-                                h1: ({ ...props }) => <h1 className="text-2xl font-bold mt-6 mb-4 text-[#2d3951]" {...props} />,
-                                h2: ({ ...props }) => <h2 className="text-xl font-bold mt-5 mb-3 text-[#2d3951]" {...props} />,
-                                h3: ({ ...props }) => <h3 className="text-lg font-bold mt-4 mb-2 text-[#175bbd]" {...props} />,
-                                h4: ({ ...props }) => <h4 className="text-base font-bold mt-3 mb-2 text-[#2d3951]" {...props} />,
-                                p: ({ ...props }) => <p className="mb-4 leading-relaxed" {...props} />,
-                                ul: ({ ...props }) => <ul className="list-disc list-inside mb-4 space-y-2 ml-4" {...props} />,
-                                ol: ({ ...props }) => <ol className="list-decimal list-inside mb-4 space-y-2 ml-4" {...props} />,
-                                li: ({ ...props }) => <li className="mb-1" {...props} />,
-                                strong: ({ ...props }) => <strong className="font-bold text-[#175bbd]" {...props} />,
-                                em: ({ ...props }) => <em className="italic" {...props} />,
-                                hr: ({ ...props }) => <hr className="my-6 border-[#2d3951]/20" {...props} />,
-                                blockquote: ({ ...props }) => <blockquote className="border-l-4 border-[#175bbd] pl-4 italic my-4 text-[#2d3951]/80" {...props} />,
-                            }}
-                        >
-                            {feedback}
-                        </ReactMarkdown>
+            <Templates feedback={feedback} />
+            {cvWebsiteData && <CvWebsiteTemplate data={cvWebsiteData} />}
+
+            {showWebsiteDialog && !cvWebsiteData && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
+                    <div className="w-full max-w-lg bg-white rounded-3xl border border-[#175bbd]/10 shadow-2xl p-6 sm:p-8">
+                        <h3 className="text-2xl font-bold text-[#2d3951] flex items-center gap-2">
+                            <HiSparkles className="w-6 h-6 text-[#175bbd]" />
+                            AI Suggestion
+                        </h3>
+                        <p className="mt-4 text-[#2d3951]/80 leading-relaxed">
+                            Your analysis is ready. Do you want me to create a beautiful website template based on your CV?
+                        </p>
+                        <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-end">
+                            <button
+                                onClick={() => setShowWebsiteDialog(false)}
+                                className="px-5 py-2.5 rounded-xl border border-[#2d3951]/15 text-[#2d3951] font-semibold hover:bg-[#f8f9fb] transition-colors"
+                            >
+                                No, thanks
+                            </button>
+                            <button
+                                onClick={handleGenerateWebsite}
+                                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#175bbd] to-[#175bbd]/90 text-white font-semibold shadow-lg shadow-[#175bbd]/20 hover:from-[#175bbd]/90 hover:to-[#175bbd]/80 transition-all"
+                            >
+                                Yes, create website
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {generatingWebsite && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4">
+                    <div className="w-full max-w-md bg-white rounded-3xl border border-[#175bbd]/10 shadow-2xl p-8 text-center">
+                        <div className="mx-auto relative w-14 h-14">
+                            <div className="absolute inset-0 border-4 border-[#175bbd]/20 rounded-full"></div>
+                            <div className="absolute inset-0 border-4 border-transparent border-t-[#175bbd] rounded-full animate-spin"></div>
+                        </div>
+                        <h3 className="mt-5 text-xl font-bold text-[#2d3951]">Generating your CV website...</h3>
+                        <p className="mt-2 text-[#2d3951]/70">Extracting structured JSON and applying it to your template.</p>
                     </div>
                 </div>
             )}

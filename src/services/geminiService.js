@@ -1,4 +1,4 @@
-import { createGeminiClient, generateContentStreamWithFallback } from './geminiClient'
+import { createGeminiClient, generateContentStreamWithFallback, generateContentWithFallback } from './geminiClient'
 import { extractResumeContent } from './fileReaderService'
 
 export async function analyzeResumeWithGemini(resumeFile, jobDescription) {
@@ -30,6 +30,88 @@ ${jobDescription}
         return stream
     } catch (error) {
         console.error('Error analyzing resume with Gemini:', error)
+        throw error
+    }
+}
+
+function extractJsonFromText(text) {
+    if (!text) return null
+
+    const fencedMatch = text.match(/```json\s*([\s\S]*?)\s*```/i)
+    if (fencedMatch?.[1]) {
+        return fencedMatch[1]
+    }
+
+    const jsonStart = text.indexOf('{')
+    const jsonEnd = text.lastIndexOf('}')
+
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        return text.slice(jsonStart, jsonEnd + 1)
+    }
+
+    return null
+}
+
+export async function buildCvWebsiteDataWithGemini(resumeFile) {
+    try {
+        const ai = createGeminiClient()
+        const resumeContent = await extractResumeContent(resumeFile)
+
+        const prompt = `Извлечи структурирани данни от предоставеното CV и върни САМО валиден JSON (без markdown, без обяснения).
+
+Използвай точно тази схема:
+{
+  "fullName": "string",
+  "title": "string",
+  "location": "string",
+  "email": "string",
+  "phone": "string",
+  "summary": "string",
+  "skills": ["string"],
+  "experience": [
+    {
+      "role": "string",
+      "company": "string",
+      "period": "string",
+      "highlights": ["string"]
+    }
+  ],
+  "education": [
+    {
+      "degree": "string",
+      "school": "string",
+      "period": "string"
+    }
+  ],
+  "projects": [
+    {
+      "name": "string",
+      "description": "string",
+      "technologies": ["string"]
+    }
+  ],
+  "languages": ["string"]
+}
+
+Правила:
+- Ако липсва стойност, върни празен стринг "" или празен списък [].
+- Не измисляй факти, които ги няма в CV.
+- Отговори само с JSON обект.
+
+Resume Content:
+${resumeContent}`
+
+        const response = await generateContentWithFallback(ai, prompt)
+        const responseText = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const rawJson = extractJsonFromText(responseText)
+
+        if (!rawJson) {
+            throw new Error('Could not extract JSON from model response.')
+        }
+
+        return JSON.parse(rawJson)
+    } catch (error) {
+        console.error('Error building CV website data with Gemini:', error)
         throw error
     }
 }

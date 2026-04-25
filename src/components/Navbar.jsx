@@ -1,19 +1,68 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HiHome, HiChartBar, HiInformationCircle, HiMenu, HiX as HiXIcon } from 'react-icons/hi'
+import { HiHome, HiChartBar, HiInformationCircle, HiMenu, HiX as HiXIcon, HiTemplate, HiUserCircle } from 'react-icons/hi'
 import { FaBrain } from 'react-icons/fa'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../services/supabaseClient'
 
 function Navbar() {
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { user, profile, signOut } = useAuth()
+  const [avatarSrc, setAvatarSrc] = useState('')
+  const avatarFallback = profile?.avatar_url || user?.user_metadata?.avatar_url || ''
 
   const isActive = (path) => location.pathname === path
 
   const navLinks = [
     { path: '/', label: 'Начало', icon: HiHome },
     { path: '/analyze', label: 'Анализиране', icon: HiChartBar },
-    { path: '/about', label: 'За нас', icon: HiInformationCircle },
+    { path: '/templates', label: 'Шаблони', icon: HiTemplate },
+    { path: '/profile', label: 'Профил', icon: HiUserCircle },
+    { path: '/about', label: 'За нас', icon: HiInformationCircle }
   ]
+
+  const handleSignOut = async () => {
+    await signOut()
+    setIsMobileMenuOpen(false)
+  }
+
+  useEffect(() => {
+    let active = true
+
+    const resolveAvatar = async () => {
+      if (!user) {
+        setAvatarSrc('')
+        return
+      }
+
+      const avatarPath = profile?.avatar_path || user.user_metadata?.avatar_path
+      const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url
+      if (avatarUrl) {
+        setAvatarSrc((prev) => prev || avatarUrl)
+      }
+
+      if (avatarPath) {
+        const { data, error } = await supabase.storage.from('Users').createSignedUrl(avatarPath, 60 * 60)
+        if (!active) return
+
+        if (!error && data?.signedUrl) {
+          setAvatarSrc(data.signedUrl)
+          return
+        }
+      }
+
+      if (avatarUrl) {
+        setAvatarSrc((prev) => prev || avatarUrl)
+      }
+    }
+
+    resolveAvatar()
+
+    return () => {
+      active = false
+    }
+  }, [user, profile])
 
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-2xl border-b border-[#2d3951]/5 shadow-[0_1px_3px_0_rgb(0,0,0,0.05)]">
@@ -50,6 +99,54 @@ function Navbar() {
                 </Link>
               )
             })}
+            {user ? (
+              <div className="flex items-center gap-3">
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover border border-[#175bbd]/20"
+                    onError={() => setAvatarSrc(avatarFallback || '')}
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[#175bbd]/10 text-[#175bbd] text-xs font-bold flex items-center justify-center">
+                    {(profile?.username || user.user_metadata?.username || user.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-semibold text-[#2d3951]/60 max-w-[180px] truncate">
+                  {profile?.username || user.user_metadata?.username || user.email}
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  className="text-sm font-semibold px-3 py-2 rounded-lg border border-[#2d3951]/10 text-[#2d3951]/80 hover:text-[#175bbd] hover:border-[#175bbd]/20 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/auth"
+                  className={`text-sm font-semibold transition-all duration-300 flex items-center gap-2 px-3 py-2 rounded-lg ${
+                    isActive('/auth')
+                      ? 'text-[#175bbd] bg-[#175bbd]/5'
+                      : 'text-[#2d3951]/70 hover:text-[#175bbd] hover:bg-[#175bbd]/5'
+                  }`}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className={`text-sm font-semibold transition-all duration-300 flex items-center gap-2 px-3 py-2 rounded-lg ${
+                    isActive('/register')
+                      ? 'text-[#175bbd] bg-[#175bbd]/5'
+                      : 'text-[#2d3951]/70 hover:text-[#175bbd] hover:bg-[#175bbd]/5'
+                  }`}
+                >
+                  Register
+                </Link>
+              </>
+            )}
           </div>
 
           <button
@@ -86,6 +183,44 @@ function Navbar() {
                   </Link>
                 )
               })}
+              {user ? (
+                <>
+                  <div className="px-4 py-2 text-sm text-[#2d3951]/60 truncate">
+                    {profile?.username || user.user_metadata?.username || user.email}
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-base font-semibold transition-all duration-300 flex items-center gap-3 px-4 py-3 rounded-lg text-[#2d3951]/70 hover:text-[#175bbd] hover:bg-[#175bbd]/5 text-left"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/auth"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`text-base font-semibold transition-all duration-300 flex items-center gap-3 px-4 py-3 rounded-lg ${
+                      isActive('/auth')
+                        ? 'text-[#175bbd] bg-[#175bbd]/5'
+                        : 'text-[#2d3951]/70 hover:text-[#175bbd] hover:bg-[#175bbd]/5'
+                    }`}
+                  >
+                    <span>Sign In</span>
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`text-base font-semibold transition-all duration-300 flex items-center gap-3 px-4 py-3 rounded-lg ${
+                      isActive('/register')
+                        ? 'text-[#175bbd] bg-[#175bbd]/5'
+                        : 'text-[#2d3951]/70 hover:text-[#175bbd] hover:bg-[#175bbd]/5'
+                    }`}
+                  >
+                    <span>Register</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
