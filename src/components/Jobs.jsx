@@ -600,7 +600,7 @@ export default function Jobs() {
       setJobsLoading(true); setJobsError('')
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, featured, title, company, logo, logo_color, logo_text, location, type, mode, level, posted, salary, match, tags, desc, keywords')
+        .select('id, featured, title, company, logo, logo_color, logo_text, location, type, mode, level, posted, salary, tags, desc, keywords')
         .order('id', { ascending: true })
       if (error) { setJobsError('Неуспешно зареждане на обявите. Опитайте отново.'); setJobsLoading(false); return }
       setJobs((data || []).map(job => ({ ...job, logoColor: job.logo_color, logoText: job.logo_text, tags: Array.isArray(job.tags) ? job.tags : [], keywords: Array.isArray(job.keywords) ? job.keywords : [] })))
