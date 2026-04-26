@@ -90,7 +90,6 @@ export async function buildCvWebsiteDataWithGemini(resumeFile) {
   "languages": ["string"],
   "certifications": ["string"]
 }
-
 Правила:
 - Ако липсва стойност, върни празен стринг "" или празен списък [].
 - Не измисляй факти, които ги няма в CV.
@@ -114,6 +113,48 @@ ${resumeContent}`
         return JSON.parse(rawJson)
     } catch (error) {
         console.error('Error building CV website data with Gemini:', error)
+        throw error
+    }
+}
+
+export async function filterJobsByCvWithGemini(cvData, jobs) {
+    try {
+        const ai = createGeminiClient()
+
+        const prompt = `Ти си кариерен асистент. Съпостави CV с налични обяви и върни САМО валиден JSON (без markdown, без обяснения).
+
+Използвай точно тази схема:
+{
+  "matchedJobIds": [number]
+}
+
+Правила:
+- matchedJobIds трябва да съдържа само id стойности от подадените обяви.
+- Включвай само обяви, които са наистина подходящи за кандидата според умения, опит, ниво и роля.
+- Ако няма подходящи обяви, върни "matchedJobIds": [].
+- Не измисляй нови id.
+- Отговори само с JSON.
+
+CV:
+${JSON.stringify(cvData || {}, null, 2)}
+
+Jobs:
+${JSON.stringify(jobs || [], null, 2)}`
+
+        const response = await generateContentWithFallback(ai, prompt)
+        const responseText = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const rawJson = extractJsonFromText(responseText)
+
+        if (!rawJson) {
+            throw new Error('Could not extract JSON from model response.')
+        }
+
+        const parsed = JSON.parse(rawJson)
+        const ids = Array.isArray(parsed?.matchedJobIds) ? parsed.matchedJobIds : []
+
+        return ids.filter((id) => Number.isFinite(Number(id))).map((id) => Number(id))
+    } catch (error) {
+        console.error('Error filtering jobs by CV with Gemini:', error)
         throw error
     }
 }

@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { HiArrowRight, HiSparkles, HiSearch, HiLocationMarker, HiClock, HiCurrencyDollar, HiBookmark, HiChip } from 'react-icons/hi'
+import { HiArrowRight, HiSparkles, HiSearch, HiLocationMarker, HiClock, HiCurrencyDollar, HiBookmark, HiChip, HiCheck, HiX } from 'react-icons/hi'
 import { useAuth } from '../context/AuthContext'
+import { filterJobsByCvWithGemini } from '../services/geminiService'
 
 /* ─── Data ─────────────────────────────────────────────────── */
 const JOBS = [
@@ -233,12 +234,105 @@ function JobCard({ job, onAnalyze }) {
   )
 }
 
+function normalizeCvName(cv) {
+  const name = cv?.name || cv?.fullName || cv?.full_name || ''
+  const email = cv?.email || ''
+  const title = cv?.title || cv?.position || cv?.jobTitle || ''
+  const initials = cv?.initials || name
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+
+  return {
+    name: name || 'Без име',
+    title: title || email || 'Запазено CV',
+    initials: initials || 'CV',
+  }
+}
+
+function CvPickerModal({ cvs, selectedCvId, onSelect, onClose }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.58)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: '100%', maxWidth: 560, background: 'var(--white)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', padding: 24, position: 'relative' }}>
+        <button
+          onClick={onClose}
+          style={{ position: 'absolute', top: 14, right: 14, width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--white)', color: 'var(--ink-50)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <HiX style={{ width: 16, height: 16 }} />
+        </button>
+
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 800, color: 'var(--ink)', marginBottom: 8 }}>
+          Избери CV
+        </h2>
+
+        <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)', marginBottom: 18, lineHeight: 1.6 }}>
+          Избери кое CV да използваме за AI филтриране на подходящи обяви.
+        </p>
+
+        {!cvs || cvs.length === 0 ? (
+          <div style={{ padding: 18, borderRadius: 'var(--radius-lg)', background: 'var(--canvas)', border: '1px solid var(--border)', textAlign: 'center' }}>
+            <p style={{ color: 'var(--ink-60)', marginBottom: 14 }}>
+              Все още нямаш запазени CV-та.
+            </p>
+            <Link
+              to="/analyze"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 'var(--radius)', background: 'var(--brand)', color: '#fff', fontWeight: 700, textDecoration: 'none' }}
+            >
+              Към анализатора
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 380, overflowY: 'auto' }}>
+            {cvs.map(cv => {
+              const data = normalizeCvName(cv)
+              const isSelected = selectedCvId === cv.id
+
+              return (
+                <button
+                  key={cv.id || `${data.name}-${cv.email || ''}`}
+                  onClick={() => onSelect(cv)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: 14, borderRadius: 'var(--radius-lg)', border: `1px solid ${isSelected ? 'var(--brand)' : 'var(--border)'}`, background: isSelected ? 'var(--brand-light)' : 'var(--white)', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                    {data.initials}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                      {data.name}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--ink-50)', marginTop: 2 }}>
+                      {data.title}
+                    </div>
+                  </div>
+
+                  {isSelected && (
+                    <HiCheck style={{ width: 18, height: 18, color: 'var(--brand)', flexShrink: 0 }} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Main component ────────────────────────────────────────── */
 export default function Jobs() {
-  const { user } = useAuth()
+  const { user, cvs } = useAuth()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('recent')
+  const [aiMatchedIds, setAiMatchedIds] = useState(null)
+  const [isAiFiltering, setIsAiFiltering] = useState(false)
+  const [aiError, setAiError] = useState('')
+  const [showCvModal, setShowCvModal] = useState(false)
+  const [selectedCv, setSelectedCv] = useState(null)
 
   const filtered = useMemo(() => {
     let jobs = [...JOBS]
@@ -256,16 +350,81 @@ export default function Jobs() {
     }
     if (sort === 'match') jobs.sort((a, b) => b.match - a.match)
     else if (sort === 'salary') jobs.sort((a, b) => parseInt(b.salary) - parseInt(a.salary))
+    if (Array.isArray(aiMatchedIds)) {
+      jobs = jobs.filter(job => aiMatchedIds.includes(job.id))
+    }
     return jobs
-  }, [search, filter, sort])
+  }, [search, filter, sort, aiMatchedIds])
+
+  async function handleApplyCvFilter(cv) {
+    if (!cv) return
+
+    setSelectedCv(cv)
+    setShowCvModal(false)
+
+    if (!cvs?.length) {
+      setAiError('Нямате запазено CV. Моля, анализирайте CV от страницата Analyze.')
+      setAiMatchedIds([])
+      return
+    }
+
+    setIsAiFiltering(true)
+    setAiError('')
+
+    try {
+      const matchedIds = await filterJobsByCvWithGemini(cv, JOBS)
+      setAiMatchedIds(Array.isArray(matchedIds) ? matchedIds : [])
+    } catch (error) {
+      console.error(error)
+      setAiError('Неуспешно филтриране с AI. Опитайте отново.')
+      setAiMatchedIds([])
+    } finally {
+      setIsAiFiltering(false)
+    }
+  }
+
+  function clearAiFilter() {
+    setAiMatchedIds(null)
+    setAiError('')
+  }
+
+  function handleOpenCvModal() {
+    if (!cvs?.length) {
+      setAiError('Нямате запазено CV. Моля, анализирайте CV от страницата Analyze.')
+      setAiMatchedIds([])
+      return
+    }
+
+    setAiError('')
+    setShowCvModal(true)
+  }
 
   function handleAnalyze(job) {
     // TODO: navigate to /analyze with job.desc pre-filled as the job description
     console.log('Analyze job:', job.id)
   }
 
+  useEffect(() => {
+    document.body.style.overflow = isAiFiltering ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [isAiFiltering])
+
   return (
     <div>
+      {isAiFiltering && (
+        <div className="loading-overlay">
+          <div className="loading-card">
+            <div className="spinner" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
+              AI анализира…
+            </h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
+              Моля, изчакайте докато филтрираме обявите според избраното CV
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero ── */}
       <section style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%)',
@@ -335,11 +494,42 @@ export default function Jobs() {
               <span style={{ fontSize: '1.375rem', flexShrink: 0 }}>📄</span>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <strong style={{ fontSize: '0.875rem', color: 'var(--ink)', display: 'block', marginBottom: 2 }}>CV от вашия профил е готово за съпоставяне</strong>
-                <span style={{ fontSize: '0.75rem', color: 'var(--ink-60)' }}>Натиснете "Анализирай" на всяка позиция, за да видите % съответствие.</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--ink-60)' }}>Натиснете "Render Jobs based on CV", за да покажем само подходящите позиции.</span>
+                {selectedCv && (
+                  <span style={{ display: 'inline-block', marginTop: 8, fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'var(--success-light, #dcfce7)', color: 'var(--success, #16a34a)' }}>
+                    Избрано CV: {normalizeCvName(selectedCv).name}
+                  </span>
+                )}
               </div>
-              <Link to="/analyze" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
-                Към анализатора <HiArrowRight style={{ width: 14, height: 14 }} />
-              </Link>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleOpenCvModal}
+                  disabled={isAiFiltering}
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.8125rem', opacity: isAiFiltering ? 0.75 : 1 }}
+                >
+                  <HiSparkles style={{ width: 14, height: 14 }} />
+                  {isAiFiltering ? 'Рендериране…' : 'Render Jobs based on CV'}
+                </button>
+                {Array.isArray(aiMatchedIds) && (
+                  <button
+                    onClick={clearAiFilter}
+                    className="btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '0.8125rem' }}
+                  >
+                    Изчисти AI филтър
+                  </button>
+                )}
+                <Link to="/analyze" className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
+                  Към анализатора <HiArrowRight style={{ width: 14, height: 14 }} />
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {aiError && (
+            <div className="alert alert-error" style={{ marginBottom: 16 }}>
+              <span>{aiError}</span>
             </div>
           )}
 
@@ -380,8 +570,14 @@ export default function Jobs() {
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--ink-60)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔍</div>
-              <p style={{ fontWeight: 600, marginBottom: 6 }}>Няма намерени позиции</p>
-              <p style={{ fontSize: '0.875rem' }}>Опитайте с друга ключова дума или премахнете филтрите.</p>
+              <p style={{ fontWeight: 600, marginBottom: 6 }}>
+                {Array.isArray(aiMatchedIds) ? 'No Jobs Matching your CV' : 'Няма намерени позиции'}
+              </p>
+              <p style={{ fontSize: '0.875rem' }}>
+                {Array.isArray(aiMatchedIds)
+                  ? 'Опитайте с друго CV или изчистете AI филтъра.'
+                  : 'Опитайте с друга ключова дума или премахнете филтрите.'}
+              </p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -392,6 +588,15 @@ export default function Jobs() {
           )}
         </div>
       </section>
+
+      {showCvModal && (
+        <CvPickerModal
+          cvs={cvs}
+          selectedCvId={selectedCv?.id}
+          onSelect={handleApplyCvFilter}
+          onClose={() => setShowCvModal(false)}
+        />
+      )}
     </div>
   )
 }
