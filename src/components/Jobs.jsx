@@ -3,94 +3,7 @@ import { Link } from 'react-router-dom'
 import { HiArrowRight, HiSparkles, HiSearch, HiLocationMarker, HiClock, HiCurrencyDollar, HiBookmark, HiChip, HiCheck, HiX } from 'react-icons/hi'
 import { useAuth } from '../context/AuthContext'
 import { filterJobsByCvWithGemini } from '../services/geminiService'
-
-/* ─── Data ─────────────────────────────────────────────────── */
-const JOBS = [
-  {
-    id: 1, featured: true,
-    title: 'Senior Frontend Engineer',
-    company: 'Telerik (Progress)',
-    logo: 'T', logoColor: '#e8f0fe', logoText: '#2563eb',
-    location: 'София, България',
-    type: 'Пълен работен ден',
-    mode: 'remote', level: 'senior',
-    posted: 'Днес', salary: '5 000 – 8 000 лв.',
-    match: 91,
-    tags: ['React', 'TypeScript', 'Node.js'],
-    desc: 'Търсим опитен Frontend инженер за разработване на компоненти на Kendo UI. Ще работите с React, TypeScript и нашата дизайн система, обслужваща над 100 000 разработчици.',
-    keywords: ['react', 'typescript', 'node', 'frontend', 'senior'],
-  },
-  {
-    id: 2, featured: false,
-    title: 'Full Stack Developer',
-    company: 'Musala Soft',
-    logo: 'M', logoColor: '#fef3c7', logoText: '#b45309',
-    location: 'София / Дистанционно',
-    type: 'Пълен работен ден',
-    mode: 'remote', level: 'senior',
-    posted: '2 дни', salary: '4 500 – 7 000 лв.',
-    match: 84,
-    tags: ['Vue.js', 'Python', 'AWS'],
-    desc: 'Присъединете се към нашия екип за разработване на enterprise решения. Ще участвате в проекти за международни клиенти, използвайки Vue.js и Python FastAPI.',
-    keywords: ['vue', 'python', 'aws', 'fullstack', 'senior'],
-  },
-  {
-    id: 3, featured: false,
-    title: 'Junior React Developer',
-    company: 'SoftUni Tech',
-    logo: 'S', logoColor: '#f0fdf4', logoText: '#15803d',
-    location: 'Пловдив, България',
-    type: 'Пълен работен ден',
-    mode: 'fulltime', level: 'junior',
-    posted: '3 дни', salary: '2 200 – 3 500 лв.',
-    match: 76,
-    tags: ['React', 'JavaScript', 'CSS'],
-    desc: 'Идеална позиция за начинаещи разработчици. Ще получите менторство от старши инженери и ще работите върху реални проекти в динамична среда.',
-    keywords: ['react', 'javascript', 'css', 'junior', 'frontend'],
-  },
-  {
-    id: 4, featured: true,
-    title: 'AI/ML Engineer',
-    company: 'Experian Bulgaria',
-    logo: 'E', logoColor: '#f5f3ff', logoText: '#6d28d9',
-    location: 'София / Хибриден',
-    type: 'Пълен работен ден',
-    mode: 'remote', level: 'senior',
-    posted: '5 дни', salary: '7 000 – 11 000 лв.',
-    match: 68,
-    tags: ['Python', 'TensorFlow', 'MLOps'],
-    desc: 'Разработвайте ML модели за кредитен скоринг и анализ на риска. Ще работите с огромни масиви от данни и ще имплементирате решения в production среда.',
-    keywords: ['python', 'ml', 'ai', 'tensorflow', 'senior', 'data'],
-  },
-  {
-    id: 5, featured: false,
-    title: 'Backend Engineer (Go)',
-    company: 'Chaos Group',
-    logo: 'C', logoColor: '#fff0f0', logoText: '#dc2626',
-    location: 'София, България',
-    type: 'Пълен работен ден',
-    mode: 'fulltime', level: 'senior',
-    posted: '1 седмица', salary: '5 500 – 9 000 лв.',
-    match: 59,
-    tags: ['Go', 'Kubernetes', 'gRPC'],
-    desc: 'Изграждайте мащабируема backend инфраструктура за нашата визуализационна платформа, използвана от водещи студия в Холивуд.',
-    keywords: ['go', 'golang', 'kubernetes', 'backend', 'senior', 'grpc'],
-  },
-  {
-    id: 6, featured: false,
-    title: 'UX/UI Designer',
-    company: 'Payhawk',
-    logo: 'P', logoColor: '#e0f2fe', logoText: '#0369a1',
-    location: 'Дистанционно (Европа)',
-    type: 'Пълен работен ден',
-    mode: 'remote', level: 'senior',
-    posted: '1 седмица', salary: '4 000 – 6 500 лв.',
-    match: 72,
-    tags: ['Figma', 'Design Systems', 'Research'],
-    desc: 'Проектирайте потребителски интерфейси за B2B финтех продукт с над 5 000 корпоративни клиента в Европа.',
-    keywords: ['design', 'ux', 'ui', 'figma', 'senior'],
-  },
-]
+import { supabase } from '../services/supabaseClient'
 
 const FILTERS = [
   { label: 'Всички', value: 'all' },
@@ -325,6 +238,9 @@ function CvPickerModal({ cvs, selectedCvId, onSelect, onClose }) {
 /* ─── Main component ────────────────────────────────────────── */
 export default function Jobs() {
   const { user, cvs } = useAuth()
+  const [jobs, setJobs] = useState([])
+  const [jobsLoading, setJobsLoading] = useState(true)
+  const [jobsError, setJobsError] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('recent')
@@ -334,11 +250,44 @@ export default function Jobs() {
   const [showCvModal, setShowCvModal] = useState(false)
   const [selectedCv, setSelectedCv] = useState(null)
 
+  useEffect(() => {
+    async function loadJobs() {
+      setJobsLoading(true)
+      setJobsError('')
+
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, featured, title, company, logo, logo_color, logo_text, location, type, mode, level, posted, salary, match, tags, desc, keywords')
+        .order('id', { ascending: true })
+
+      if (error) {
+        console.error('Error loading jobs:', error)
+        setJobsError('Неуспешно зареждане на обявите. Опитайте отново.')
+        setJobs([])
+        setJobsLoading(false)
+        return
+      }
+
+      const normalizedJobs = (data || []).map(job => ({
+        ...job,
+        logoColor: job.logo_color,
+        logoText: job.logo_text,
+        tags: Array.isArray(job.tags) ? job.tags : [],
+        keywords: Array.isArray(job.keywords) ? job.keywords : [],
+      }))
+
+      setJobs(normalizedJobs)
+      setJobsLoading(false)
+    }
+
+    loadJobs()
+  }, [])
+
   const filtered = useMemo(() => {
-    let jobs = [...JOBS]
+    let filteredJobs = [...jobs]
     const q = search.toLowerCase().trim()
     if (q) {
-      jobs = jobs.filter(j =>
+      filteredJobs = filteredJobs.filter(j =>
         j.title.toLowerCase().includes(q) ||
         j.company.toLowerCase().includes(q) ||
         j.keywords.some(k => k.includes(q)) ||
@@ -346,15 +295,15 @@ export default function Jobs() {
       )
     }
     if (filter !== 'all') {
-      jobs = jobs.filter(j => j.mode === filter || j.level === filter)
+      filteredJobs = filteredJobs.filter(j => j.mode === filter || j.level === filter)
     }
-    if (sort === 'match') jobs.sort((a, b) => b.match - a.match)
-    else if (sort === 'salary') jobs.sort((a, b) => parseInt(b.salary) - parseInt(a.salary))
+    if (sort === 'match') filteredJobs.sort((a, b) => b.match - a.match)
+    else if (sort === 'salary') filteredJobs.sort((a, b) => parseInt(b.salary) - parseInt(a.salary))
     if (Array.isArray(aiMatchedIds)) {
-      jobs = jobs.filter(job => aiMatchedIds.includes(job.id))
+      filteredJobs = filteredJobs.filter(job => aiMatchedIds.includes(job.id))
     }
-    return jobs
-  }, [search, filter, sort, aiMatchedIds])
+    return filteredJobs
+  }, [jobs, search, filter, sort, aiMatchedIds])
 
   async function handleApplyCvFilter(cv) {
     if (!cv) return
@@ -372,7 +321,7 @@ export default function Jobs() {
     setAiError('')
 
     try {
-      const matchedIds = await filterJobsByCvWithGemini(cv, JOBS)
+      const matchedIds = await filterJobsByCvWithGemini(cv, jobs)
       setAiMatchedIds(Array.isArray(matchedIds) ? matchedIds : [])
     } catch (error) {
       console.error(error)
@@ -504,12 +453,12 @@ export default function Jobs() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   onClick={handleOpenCvModal}
-                  disabled={isAiFiltering}
+                  disabled={isAiFiltering || jobsLoading || jobs.length === 0}
                   className="btn-primary"
-                  style={{ padding: '8px 16px', fontSize: '0.8125rem', opacity: isAiFiltering ? 0.75 : 1 }}
+                  style={{ padding: '8px 16px', fontSize: '0.8125rem', opacity: (isAiFiltering || jobsLoading || jobs.length === 0) ? 0.75 : 1 }}
                 >
                   <HiSparkles style={{ width: 14, height: 14 }} />
-                  {isAiFiltering ? 'Рендериране…' : 'Render Jobs based on CV'}
+                  {isAiFiltering ? 'Рендериране…' : jobsLoading ? 'Зареждане…' : 'Render Jobs based on CV'}
                 </button>
                 {Array.isArray(aiMatchedIds) && (
                   <button
@@ -524,6 +473,12 @@ export default function Jobs() {
                   Към анализатора <HiArrowRight style={{ width: 14, height: 14 }} />
                 </Link>
               </div>
+            </div>
+          )}
+
+          {jobsError && (
+            <div className="alert alert-error" style={{ marginBottom: 16 }}>
+              <span>{jobsError}</span>
             </div>
           )}
 
@@ -567,7 +522,12 @@ export default function Jobs() {
           </div>
 
           {/* Jobs list */}
-          {filtered.length === 0 ? (
+          {jobsLoading ? (
+            <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--ink-60)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: 12 }}>⏳</div>
+              <p style={{ fontWeight: 600, marginBottom: 6 }}>Зареждане на обяви…</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--ink-60)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔍</div>
               <p style={{ fontWeight: 600, marginBottom: 6 }}>
