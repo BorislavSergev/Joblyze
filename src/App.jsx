@@ -11,6 +11,7 @@ import Register from './components/Register'
 import Profile from './components/Profile'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import Jobs from './components/Jobs'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
               <Route path="/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
+              <Route path='/jobs' element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
             </Routes>
           </main>
           <Footer />

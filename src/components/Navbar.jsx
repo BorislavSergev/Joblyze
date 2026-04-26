@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HiHome, HiChartBar, HiInformationCircle, HiMenu, HiX, HiTemplate, HiUser, HiLogout } from 'react-icons/hi'
+import { HiHome, HiChartBar, HiInformationCircle, HiMenu, HiX, HiTemplate, HiUser, HiLogout, HiBriefcase } from 'react-icons/hi'
 import { FaBrain } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 import { getAvatarUrl } from '../services/avatarCache'
@@ -38,6 +38,7 @@ function Navbar() {
     { path: '/analyze',   label: 'Анализиране', icon: HiChartBar },
     { path: '/templates', label: 'Шаблони',    icon: HiTemplate },
     { path: '/about',     label: 'За нас',     icon: HiInformationCircle },
+    { path: '/jobs',      label: 'Обяви за работа', icon: HiBriefcase },
   ]
 
   return (
