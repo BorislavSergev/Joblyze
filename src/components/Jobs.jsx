@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { HiArrowRight, HiSparkles, HiSearch, HiLocationMarker, HiClock, HiCurrencyDollar, HiBookmark, HiChip, HiCheck, HiX } from 'react-icons/hi'
+import { HiArrowRight, HiSparkles, HiSearch, HiClock, HiCurrencyDollar, HiBookmark, HiChip, HiCheck, HiX } from 'react-icons/hi'
 import { useAuth } from '../context/AuthContext'
 import { filterJobsByCvWithGemini } from '../services/geminiService'
 import { supabase } from '../services/supabaseClient'
@@ -12,20 +12,6 @@ const FILTERS = [
   { label: 'Junior', value: 'junior' },
   { label: 'Пълен работен ден', value: 'fulltime' },
 ]
-
-/* ─── Sub-components ────────────────────────────────────────── */
-function MatchIndicator({ score }) {
-  const color = score >= 85 ? '#15803d' : score >= 70 ? '#2563eb' : score >= 55 ? '#b45309' : '#64748b'
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--canvas)', borderRadius: 10, padding: '6px 12px' }}>
-      <span style={{ fontSize: '0.6875rem', color: 'var(--ink-60)', fontWeight: 500, whiteSpace: 'nowrap' }}>Съответствие</span>
-      <div style={{ width: 60, height: 4, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-        <div style={{ width: `${score}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #2563eb, #4ade80)' }} />
-      </div>
-      <span style={{ fontSize: '0.875rem', fontWeight: 700, color, minWidth: 32 }}>{score}%</span>
-    </div>
-  )
-}
 
 function JobCard({ job, onAnalyze }) {
   const [saved, setSaved] = useState(false)
@@ -104,7 +90,6 @@ function JobCard({ job, onAnalyze }) {
           <span style={{ fontSize: '0.75rem', color: 'var(--ink-60)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <HiCurrencyDollar style={{ width: 13, height: 13 }} /> {job.salary}
           </span>
-          <MatchIndicator score={job.match} />
         </div>
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
           <button
@@ -257,7 +242,7 @@ export default function Jobs() {
 
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, featured, title, company, logo, logo_color, logo_text, location, type, mode, level, posted, salary, match, tags, desc, keywords')
+        .select('id, featured, title, company, logo, logo_color, logo_text, location, type, mode, level, posted, salary, tags, desc, keywords')
         .order('id', { ascending: true })
 
       if (error) {
@@ -297,8 +282,7 @@ export default function Jobs() {
     if (filter !== 'all') {
       filteredJobs = filteredJobs.filter(j => j.mode === filter || j.level === filter)
     }
-    if (sort === 'match') filteredJobs.sort((a, b) => b.match - a.match)
-    else if (sort === 'salary') filteredJobs.sort((a, b) => parseInt(b.salary) - parseInt(a.salary))
+    if (sort === 'salary') filteredJobs.sort((a, b) => parseInt(b.salary) - parseInt(a.salary))
     if (Array.isArray(aiMatchedIds)) {
       filteredJobs = filteredJobs.filter(job => aiMatchedIds.includes(job.id))
     }
@@ -516,7 +500,6 @@ export default function Jobs() {
               style={{ fontSize: '0.75rem', color: 'var(--ink-60)', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <option value="recent">Най-нови</option>
-              <option value="match">По съответствие</option>
               <option value="salary">По заплата</option>
             </select>
           </div>
