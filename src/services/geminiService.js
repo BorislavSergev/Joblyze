@@ -121,38 +121,53 @@ export async function filterJobsByCvWithGemini(cvData, jobs) {
     try {
         const ai = createGeminiClient()
 
-        const prompt = `Ти си кариерен асистент. Съпостави CV с налични обяви и върни САМО валиден JSON (без markdown, без обяснения).
+        const prompt = `Ти си кариерен асистент. Съпостави CV с налични обяви за работа и върни САМО валиден JSON (без markdown, без обяснения, без текст извън JSON).
 
-Използвай точно тази схема:
+Схема на отговора:
 {
-  "matchedJobIds": [number]
+  "results": [
+    {
+      "id": number,
+      "score": number,
+      "reasons": [string, string, string]
+    }
+  ]
 }
 
 Правила:
-- matchedJobIds трябва да съдържа само id стойности от подадените обяви.
-- Включвай само обяви, които са наистина подходящи за кандидата според умения, опит, ниво и роля.
-- Ако няма подходящи обяви, върни "matchedJobIds": [].
+- Включвай ВСИЧКИ подадени обяви в "results" — дори несъответстващите (те получават нисък score).
+- "score" е цяло число от 0 до 100, което отразява колко добре CV-то съответства на обявата.
+  - 85–100: отлично съответствие
+  - 65–84: добро съответствие
+  - 45–64: частично съответствие
+  - 0–44: слабо или без съответствие
+- "reasons" е масив от ТОЧНО 3 кратки изречения на български — защо score-ът е такъв (силни страни и/или липси).
+- id трябва да е точно id-то от подадената обява.
 - Не измисляй нови id.
 - Отговори само с JSON.
 
 CV:
 ${JSON.stringify(cvData || {}, null, 2)}
 
-Jobs:
-${JSON.stringify(jobs || [], null, 2)}`
+Обяви:
+${JSON.stringify((jobs || []).map(j => ({ id: j.id, title: j.title, company: j.company, desc: j.desc, tags: j.tags, level: j.level, type: j.type })), null, 2)}`
 
         const response = await generateContentWithFallback(ai, prompt)
         const responseText = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || ''
         const rawJson = extractJsonFromText(responseText)
 
-        if (!rawJson) {
-            throw new Error('Could not extract JSON from model response.')
-        }
+        if (!rawJson) throw new Error('Could not extract JSON from model response.')
 
         const parsed = JSON.parse(rawJson)
-        const ids = Array.isArray(parsed?.matchedJobIds) ? parsed.matchedJobIds : []
+        const results = Array.isArray(parsed?.results) ? parsed.results : []
 
-        return ids.filter((id) => Number.isFinite(Number(id))).map((id) => Number(id))
+        return results
+            .filter(r => Number.isFinite(Number(r.id)))
+            .map(r => ({
+                id: Number(r.id),
+                score: Math.min(100, Math.max(0, Math.round(Number(r.score) || 0))),
+                reasons: Array.isArray(r.reasons) ? r.reasons.slice(0, 3) : [],
+            }))
     } catch (error) {
         console.error('Error filtering jobs by CV with Gemini:', error)
         throw error
