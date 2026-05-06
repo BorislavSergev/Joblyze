@@ -3,11 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { HiLockClosed, HiMail, HiEye, HiEyeOff, HiArrowRight } from 'react-icons/hi'
 import { FaBrain } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from 'react-i18next'
 
 function Auth() {
   const { signIn, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -28,14 +30,14 @@ function Auth() {
             <FaBrain style={{ width: 24, height: 24 }} />
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
-            Вече сте влезли
+            {t('auth.already_logged_in')}
           </h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--ink-60)', marginBottom: 24 }}>
-            Продължете към таблото за анализ.
+            {t('auth.continue_to_dashboard')}
           </p>
           <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
             onClick={() => navigate(destination, { replace: true })}>
-            Продължи
+            {t('auth.continue')}
             <HiArrowRight style={{ width: 16, height: 16 }} />
           </button>
         </div>
@@ -50,10 +52,10 @@ function Auth() {
     try {
       const { data, error: err } = await signIn(email, password)
       if (err) throw err
-      if (!data?.session) throw new Error('Влизането е успешно, но не е намерена активна сесия. Моля, опитайте отново.')
+      if (!data?.session) throw new Error(t('auth.sign_in_success_no_session'))
       navigate(destination, { replace: true })
     } catch (err) {
-      setError(err.message || 'Неуспешно удостоверяване. Моля, опитайте отново.')
+      setError(err.message || t('auth.auth_failed'))
     } finally {
       setLoading(false)
     }
@@ -72,17 +74,17 @@ function Auth() {
             <FaBrain style={{ width: 22, height: 22, color: '#fff' }} />
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
-            Добре дошли отново
+            {t('auth.welcome_back')}
           </h1>
           <p style={{ marginTop: 6, fontSize: '0.9rem', color: 'var(--ink-60)' }}>
-            Влезте в профила си, за да продължите
+            {t('auth.sign_in_to_continue')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Email */}
           <div className="form-field">
-            <label className="form-label">Имейл</label>
+            <label className="form-label">{t('auth.email')}</label>
             <div className="form-input-wrap">
               <HiMail className="form-input-icon" />
               <input
@@ -98,7 +100,7 @@ function Auth() {
 
           {/* Password */}
           <div className="form-field">
-            <label className="form-label">Парола</label>
+            <label className="form-label">{t('auth.password')}</label>
             <div className="form-input-wrap">
               <HiLockClosed className="form-input-icon" />
               <input
@@ -107,7 +109,7 @@ function Auth() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={6}
-                placeholder="Минимум 6 символа"
+                placeholder={t('auth.min_6_chars')}
                 className="form-input has-icon"
                 style={{ paddingRight: 40 }}
               />
@@ -140,23 +142,23 @@ function Auth() {
             className="btn-primary"
             style={{ width: '100%', justifyContent: 'center', padding: '13px 20px', fontSize: '0.9375rem', marginTop: 4 }}
           >
-            {loading ? 'Моля, изчакайте...' : 'Вход'}
+            {loading ? t('auth.please_wait') : t('auth.sign_in')}
             {!loading && <HiArrowRight style={{ width: 16, height: 16 }} />}
           </button>
         </form>
 
         <div className="auth-divider">
           <div className="auth-divider-line" />
-          <span className="auth-divider-text">Нямате профил?</span>
+          <span className="auth-divider-text">{t('auth.no_account')}</span>
           <div className="auth-divider-line" />
         </div>
 
         <Link to="/register" className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '0.9rem' }}>
-          Създайте акаунт безплатно
+          {t('auth.create_free_account')}
         </Link>
 
         <p style={{ textAlign: 'center', marginTop: 16, fontSize: '0.8125rem', color: 'var(--ink-40)' }}>
-          <Link to="/" style={{ color: 'var(--ink-40)' }}>← Назад към началото</Link>
+          <Link to="/" style={{ color: 'var(--ink-40)' }}>{t('auth.back_to_home')}</Link>
         </p>
       </div>
     </div>

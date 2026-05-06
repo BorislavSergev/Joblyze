@@ -4,9 +4,11 @@ import { FaFileUpload } from 'react-icons/fa'
 import ReactMarkdown from 'react-markdown'
 import { analyzeResumeWithGemini, buildCvWebsiteDataWithGemini } from '../services/geminiService'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from 'react-i18next'
 
 function Analyze() {
   const { user, saveCv } = useAuth()
+  const { t } = useTranslation()
 
   const [resumeFile, setResumeFile]           = useState(null)
   const [resumeName, setResumeName]           = useState('')
@@ -37,7 +39,6 @@ function Analyze() {
   const handleResumeDrop = useCallback((e) => {
     e.preventDefault()
     setResumeDragging(false)
-
     const f = e.dataTransfer.files[0]
     if (f && (f.type === 'application/pdf' || f.type === 'text/plain')) {
       setResumeFile(f)
@@ -116,7 +117,7 @@ function Analyze() {
       }
     } catch (err) {
       console.error(err)
-      setFeedback(`**Грешка:** ${err.message || 'Неуспешен анализ. Проверете API ключа и опитайте отново.'}`)
+      setFeedback(`**${t('analyze.error_generic')}** ${err.message || ''}`)
       setIsStreaming(false)
     } finally {
       setLoading(false)
@@ -127,7 +128,7 @@ function Analyze() {
     if (!resumeFile) return
 
     if (!user) {
-      setSaveError('Трябва да сте влезли в профила си, за да запазите CV.')
+      setSaveError(t('analyze.save_error_login'))
       setShowSaveCvDialog(false)
       return
     }
@@ -141,10 +142,10 @@ function Analyze() {
       const json = await buildCvWebsiteDataWithGemini(resumeFile)
       await saveCv(json)
       setSavedCvData(json)
-      setSaveSuccess('CV-то беше запазено успешно във вашия профил.')
+      setSaveSuccess(t('analyze.save_success'))
     } catch (err) {
       console.error(err)
-      setSaveError(err.message || 'Неуспешно запазване на CV. Опитайте отново.')
+      setSaveError(err.message || t('analyze.save_error_generic'))
     } finally {
       setSavingCv(false)
     }
@@ -204,10 +205,10 @@ function Analyze() {
           <div className="loading-card">
             <div className="spinner" />
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
-              AI анализира…
+              {t('analyze.loading_title')}
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
-              Моля, изчакайте докато обработваме резюмето ви
+              {t('analyze.loading_subtitle')}
             </p>
           </div>
         </div>
@@ -219,10 +220,10 @@ function Analyze() {
           <div className="loading-card">
             <div className="spinner" />
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
-              Запазване на CV…
+              {t('analyze.saving_title')}
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
-              Извличаме структурираните данни и ги добавяме към профила ви
+              {t('analyze.saving_subtitle')}
             </p>
           </div>
         </div>
@@ -237,21 +238,21 @@ function Analyze() {
                 <HiSave style={{ width: 18, height: 18, color: 'var(--brand)' }} />
               </div>
               <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', color: 'var(--ink)' }}>
-                Да запазим ли CV-то?
+                {t('analyze.save_dialog_title')}
               </h3>
             </div>
 
             <p style={{ fontSize: '0.9rem', color: 'var(--ink-60)', lineHeight: 1.65, marginBottom: 24 }}>
-              Анализът е готов. Искате ли AI да извлече информацията от това CV и да я запази във вашия профил? След това ще можете да я използвате в страницата с шаблони.
+              {t('analyze.save_dialog_desc')}
             </p>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button onClick={handleSkipSaveCv} className="btn-secondary">
-                Не, благодаря
+                {t('analyze.no_thanks')}
               </button>
               <button onClick={handleSaveScrapedCv} className="btn-primary">
                 <HiSave style={{ width: 14, height: 14 }} />
-                Да, запази CV
+                {t('analyze.yes_save')}
               </button>
             </div>
           </div>
@@ -262,7 +263,7 @@ function Analyze() {
       <div style={{ marginBottom: 'clamp(36px,6vw,60px)' }}>
         <span className="chip chip-brand anim-fade-up" style={{ display: 'inline-flex', marginBottom: 14 }}>
           <HiSparkles style={{ width: 11, height: 11 }} />
-          AI анализ
+          {t('analyze.chip')}
         </span>
         <h1 className="anim-fade-up d-1" style={{
           fontFamily: 'var(--font-display)',
@@ -273,10 +274,10 @@ function Analyze() {
           lineHeight: 1.15,
           marginBottom: 12,
         }}>
-          Анализирайте резюмето си
+          {t('analyze.title')}
         </h1>
         <p className="anim-fade-up d-2" style={{ fontSize: 'clamp(0.9rem,2vw,1.0625rem)', color: 'var(--ink-60)', maxWidth: 540, lineHeight: 1.7 }}>
-          Качете автобиографията си и описанието на длъжността за персонализиран AI доклад.
+          {t('analyze.subtitle')}
         </p>
       </div>
 
@@ -291,7 +292,7 @@ function Analyze() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
             <FaFileUpload style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.01em' }}>Резюме</span>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.01em' }}>{t('analyze.resume_label')}</span>
             {resumeFile && (
               <span className="chip chip-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>
                 <HiCheck style={{ width: 10, height: 10 }} />
@@ -318,24 +319,24 @@ function Analyze() {
             </div>
 
             <p style={{ fontSize: '0.875rem', fontWeight: 600, color: resumeFile ? 'var(--brand)' : 'var(--ink)', marginBottom: 6, textAlign: 'center' }}>
-              {resumeFile ? 'Файлът е качен успешно' : resumeDragging ? 'Пуснете файла тук' : 'Плъзнете или кликнете за качване'}
+              {resumeFile ? t('analyze.file_uploaded') : resumeDragging ? t('analyze.drop_file_here') : t('analyze.drag_or_click')}
             </p>
             <p style={{ fontSize: '0.78rem', color: 'var(--ink-40)', marginBottom: 18, textAlign: 'center' }}>
-              PDF или TXT · до 10 MB
+              {t('analyze.file_types')}
             </p>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <label>
                 <span className="btn-primary" style={{ padding: '9px 18px', fontSize: '0.8125rem', cursor: 'pointer' }}>
                   <HiUpload style={{ width: 13, height: 13 }} />
-                  {resumeFile ? 'Смени' : 'Избери файл'}
+                  {resumeFile ? t('analyze.change') : t('analyze.select_file')}
                 </span>
                 <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
               </label>
               {resumeFile && (
                 <button onClick={() => { setResumeFile(null); setResumeName(''); setSavedCvData(null); setSaveSuccess(''); setSaveError('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
                   <HiX style={{ width: 13, height: 13 }} />
-                  Изчисти
+                  {t('analyze.clear')}
                 </button>
               )}
             </div>
@@ -346,10 +347,10 @@ function Analyze() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
             <HiClipboardCopy style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)' }}>Описание на длъжността</span>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)' }}>{t('analyze.job_description')}</span>
             {jdText && (
               <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 6 }}>
-                {jdText.length} символа
+                {jdText.length} {t('analyze.chars')}
               </span>
             )}
           </div>
@@ -358,7 +359,7 @@ function Analyze() {
               className="form-textarea"
               value={jdText}
               onChange={e => setJdText(e.target.value)}
-              placeholder="Поставете текста на обявата за работа тук…"
+              placeholder={t('analyze.job_description_placeholder')}
               style={{ minHeight: 'clamp(180px,28vw,280px)' }}
             />
             {jdText && (
@@ -386,7 +387,7 @@ function Analyze() {
         {(resumeFile || jdText) && (
           <button onClick={handleClearAll} className="btn-secondary">
             <HiX style={{ width: 14, height: 14 }} />
-            Изчисти всички
+            {t('analyze.clear_all')}
           </button>
         )}
         <button
@@ -396,7 +397,7 @@ function Analyze() {
           style={{ padding: '12px 24px', fontSize: '0.9375rem' }}
         >
           <HiSparkles style={{ width: 15, height: 15 }} />
-          {loading ? 'Анализиране…' : 'Анализирай сега'}
+          {loading ? t('analyze.analyzing') : t('analyze.analyze_now')}
         </button>
       </div>
 
@@ -422,10 +423,10 @@ function Analyze() {
             </div>
             <div>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
-                CV-то е готово за шаблоните
+                {t('analyze.cv_ready_title')}
               </h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--ink-50)', margin: 0 }}>
-                Можете да го изберете от страницата с CV шаблони.
+                {t('analyze.cv_ready_desc')}
               </p>
             </div>
           </div>
@@ -438,12 +439,12 @@ function Analyze() {
           <div className="feedback-header">
             <HiSparkles style={{ width: 17, height: 17, color: '#fff', flexShrink: 0 }} />
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
-              Обратна връзка с AI
+              {t('analyze.ai_feedback')}
             </span>
             {isStreaming && (
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7 }}>
                 <div className="stream-dot" />
-                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)' }}>Стрийминг…</span>
+                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)' }}>{t('analyze.streaming')}</span>
               </div>
             )}
           </div>
@@ -459,7 +460,7 @@ function Analyze() {
       {!feedback && !loading && !savingCv && (
         <div className="anim-fade-up d-4" style={{ textAlign: 'center', padding: '52px 24px', color: 'var(--ink-40)' }}>
           <HiDocumentText style={{ width: 36, height: 36, margin: '0 auto 10px', display: 'block', opacity: 0.35 }} />
-          <p style={{ fontSize: '0.9rem' }}>Качете резюме и описание на длъжността, за да започнете</p>
+          <p style={{ fontSize: '0.9rem' }}>{t('analyze.empty_state')}</p>
         </div>
       )}
     </div>

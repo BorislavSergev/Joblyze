@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../services/supabaseClient'
 import { getAvatarUrl, invalidateAvatar } from '../services/avatarCache'
+import { useTranslation } from 'react-i18next'
 
 function Profile() {
   const { user, profile, updateUser, upsertProfile, refreshProfile, setProfileOptimistic, signOut, cvs, deleteCv } = useAuth()
+  const { t } = useTranslation()
   const [username, setUsername]             = useState(profile?.username || user?.user_metadata?.username || '')
   const [avatarFile, setAvatarFile]         = useState(null)
   const [avatarPreview, setAvatarPreview]   = useState('')
@@ -33,8 +35,8 @@ function Profile() {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) { setError('Моля, качете валидно изображение.'); return }
-    if (file.size > 5 * 1024 * 1024) { setError('Снимката трябва да е под 5MB.'); return }
+    if (!file.type.startsWith('image/')) { setError(t('profile.invalid_image')); return }
+    if (file.size > 5 * 1024 * 1024) { setError(t('profile.photo_too_large')); return }
     setError('')
     setAvatarFile(file)
     const reader = new FileReader()
@@ -50,7 +52,7 @@ function Profile() {
     const ext = avatarFile.name.split('.').pop() || 'jpg'
     const avatarPath = `${userId}/avatar-${Date.now()}.${ext}`
     const { error: err } = await supabase.storage.from('Users').upload(avatarPath, avatarFile, { upsert: true, contentType: avatarFile.type })
-    if (err) throw new Error(`Качването е неуспешно: ${err.message}`)
+    if (err) throw new Error(t('profile.upload_failed', { message: err.message }))
     const { data: pub } = supabase.storage.from('Users').getPublicUrl(avatarPath)
     return { avatarPath, avatarUrl: pub.publicUrl || '' }
   }
@@ -59,14 +61,13 @@ function Profile() {
     e.preventDefault()
     setError(''); setSuccess('')
     const trimmed = username.trim()
-    if (!trimmed) { setError('Потребителското име е задължително.'); return }
-    if (!user?.id) { setError('Не е намерен потребител. Моля, влезте отново.'); return }
+    if (!trimmed) { setError(t('profile.username_required')); return }
+    if (!user?.id) { setError(t('profile.user_not_found')); return }
     setLoading(true)
     try {
       setProfileOptimistic({ username: trimmed, avatar_url: avatarPreview || profile?.avatar_url || user?.user_metadata?.avatar_url || '' })
       const oldPath = profile?.avatar_path || user?.user_metadata?.avatar_path
       const { avatarPath, avatarUrl } = await uploadAvatar(user.id)
-      // Bust the cache for the old path before saving the new one
       if (oldPath && oldPath !== avatarPath) invalidateAvatar(oldPath)
       invalidateAvatar(avatarPath)
       const { error: err } = await updateUser({ data: { username: trimmed, avatar_path: avatarPath, avatar_url: avatarUrl } })
@@ -74,9 +75,9 @@ function Profile() {
       await upsertProfile({ userId: user.id, email: user.email || profile?.email || '', username: trimmed, avatar_path: avatarPath, avatar_url: avatarUrl })
       await refreshProfile()
       setAvatarFile(null); setAvatarPreview('')
-      setSuccess('Профилът е обновен успешно.')
+      setSuccess(t('profile.update_success'))
     } catch (err) {
-      setError(err.message || 'Неуспешно обновяване на профила.')
+      setError(err.message || t('profile.update_failed'))
     } finally {
       setLoading(false)
     }
@@ -97,7 +98,7 @@ function Profile() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-                Профил
+                {t('profile.profile_label')}
               </p>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.25rem,3vw,1.625rem)', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }} className="truncate">
                 {displayName}
@@ -117,15 +118,15 @@ function Profile() {
               onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
             >
               <HiLogout style={{ width: 14, height: 14 }} />
-              Изход
+              {t('profile.sign_out')}
             </button>
           </div>
 
           {/* Quick stats */}
           <div style={{ display: 'flex', gap: 24, marginTop: 28, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.12)', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
             {[
-              { icon: HiChartBar,  label: 'Анализи',   link: '/analyze' },
-              { icon: HiTemplate,  label: 'Шаблони',   link: '/templates' },
+              { icon: HiChartBar, label: t('profile.analyses'),  link: '/analyze' },
+              { icon: HiTemplate, label: t('profile.templates'), link: '/templates' },
             ].map(({ icon: Icon, label, link }) => (
               <Link key={label} to={link} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -145,7 +146,7 @@ function Profile() {
         {/* ── Edit form card ── */}
         <div className="card anim-fade-up d-1" style={{ padding: 'clamp(24px,4vw,36px)' }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 24, letterSpacing: '-0.015em' }}>
-            Редактиране на профила
+            {t('profile.edit_title')}
           </h2>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -169,11 +170,11 @@ function Profile() {
                 <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
               </label>
               <div>
-                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-80)' }}>Снимка на профила</p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--ink-40)', marginTop: 2 }}>JPG, PNG · до 5MB</p>
+                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-80)' }}>{t('profile.profile_photo')}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--ink-40)', marginTop: 2 }}>{t('profile.photo_types')}</p>
                 {avatarPreview && (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: '0.75rem', fontWeight: 600, color: 'var(--success)' }}>
-                    <HiCheck style={{ width: 12, height: 12 }} /> Готово за запазване
+                    <HiCheck style={{ width: 12, height: 12 }} /> {t('profile.ready_to_save')}
                   </span>
                 )}
               </div>
@@ -181,16 +182,16 @@ function Profile() {
 
             {/* Username */}
             <div className="form-field">
-              <label className="form-label">Потребителско име</label>
+              <label className="form-label">{t('profile.username')}</label>
               <div className="form-input-wrap">
                 <HiUser className="form-input-icon" />
-                <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder="вашето_потр_име" className="form-input has-icon" />
+                <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder={t('profile.username_placeholder')} className="form-input has-icon" />
               </div>
             </div>
 
             {/* Email (readonly) */}
             <div className="form-field">
-              <label className="form-label">Имейл <span style={{ color: 'var(--ink-40)', fontWeight: 400 }}>(не може да се промени)</span></label>
+              <label className="form-label">{t('profile.email')} <span style={{ color: 'var(--ink-40)', fontWeight: 400 }}>{t('profile.cannot_change')}</span></label>
               <div className="form-input-wrap">
                 <HiMail className="form-input-icon" />
                 <input type="email" value={user?.email || profile?.email || ''} disabled className="form-input has-icon" />
@@ -203,8 +204,8 @@ function Profile() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
               <button type="submit" disabled={loading} className="btn-primary" style={{ gap: 8 }}>
                 {loading
-                  ? <><span>Запазване...</span></>
-                  : <><HiSave style={{ width: 15, height: 15 }} /><span>Запази промените</span></>
+                  ? <><span>{t('profile.saving')}</span></>
+                  : <><HiSave style={{ width: 15, height: 15 }} /><span>{t('profile.save_changes')}</span></>
                 }
               </button>
             </div>
@@ -217,16 +218,16 @@ function Profile() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <HiBriefcase style={{ width: 20, height: 20, color: 'var(--brand)' }} />
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.015em', margin: 0 }}>
-                Запазени автобиографии
+                {t('profile.saved_cvs')}
               </h2>
               <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 600, background: 'var(--brand-light)', color: 'var(--brand)', padding: '3px 10px', borderRadius: 99 }}>
-                {cvs.length} {cvs.length === 1 ? 'CV' : 'CV-та'}
+                {cvs.length} {cvs.length === 1 ? t('profile.cv_count_one') : t('profile.cv_count_other')}
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {cvs.map((cv, index) => (
-                <CvCard key={cv.id || index} cv={cv} onDelete={() => deleteCv(cv.id)} />
+                <CvCard key={cv.id || index} cv={cv} onDelete={() => deleteCv(cv.id)} t={t} />
               ))}
             </div>
           </div>
@@ -237,27 +238,27 @@ function Profile() {
           <div className="card anim-fade-up d-2" style={{ padding: 'clamp(24px,4vw,36px)', marginTop: 24, textAlign: 'center' }}>
             <HiDocumentText style={{ width: 40, height: 40, color: 'var(--ink-30)', margin: '0 auto 12px' }} />
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
-              Все още нямате запазени CV-та
+              {t('profile.no_cvs_title')}
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)', marginBottom: 16 }}>
-              Качете резюме в страницата за анализ и го запазете, за да го видите тук.
+              {t('profile.no_cvs_desc')}
             </p>
             <Link to="/analyze" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px' }}>
               <HiChartBar style={{ width: 14, height: 14 }} />
-              Анализирай CV
+              {t('profile.analyze_cv')}
             </Link>
           </div>
         )}
 
         {/* ── Danger zone ── */}
         <div className="card anim-fade-up d-2" style={{ padding: 'clamp(20px,4vw,28px)', marginTop: 16, border: '1px solid rgba(239,68,68,0.12)' }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--error)', marginBottom: 8 }}>Зона за опасни действия</h3>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--error)', marginBottom: 8 }}>{t('profile.danger_zone_title')}</h3>
           <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)', marginBottom: 14 }}>
-            Изходът ви отвежда към страницата за вход. Данните ви се запазват.
+            {t('profile.danger_zone_desc')}
           </p>
           <button onClick={signOut} className="btn-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <HiLogout style={{ width: 14, height: 14 }} />
-            Изход от профила
+            {t('profile.sign_out_profile')}
           </button>
         </div>
       </div>
@@ -265,15 +266,12 @@ function Profile() {
   )
 }
 
-/* ════════════════════════════════════════════════════════════════════
-   CV Card Component — Beautiful visualization of saved CV
-══════════════════════════════════════════════════════════════════════ */
-function CvCard({ cv, onDelete }) {
+function CvCard({ cv, onDelete, t }) {
   const [expanded, setExpanded] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    if (window.confirm('Сигурни ли сте, че искате да изтриете това CV?')) {
+    if (window.confirm(t('profile.delete_confirm'))) {
       setDeleting(true)
       await onDelete()
       setDeleting(false)
@@ -299,7 +297,6 @@ function CvCard({ cv, onDelete }) {
       }}
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Avatar circle */}
         <div style={{
           width: 48, height: 48, borderRadius: 12,
           background: 'linear-gradient(135deg, var(--brand) 0%, #6366f1 100%)',
@@ -309,10 +306,9 @@ function CvCard({ cv, onDelete }) {
           <span style={{ color: '#fff', fontWeight: 800, fontSize: '1rem' }}>{initials}</span>
         </div>
 
-        {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-            <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)' }}>{cv.name || 'Без име'}</span>
+            <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)' }}>{cv.name || t('profile.no_name')}</span>
             {cv.title && (
               <span style={{ fontSize: '0.7rem', fontWeight: 600, background: 'var(--brand-light)', color: 'var(--brand)', padding: '2px 8px', borderRadius: 99 }}>
                 {cv.title}
@@ -325,7 +321,6 @@ function CvCard({ cv, onDelete }) {
           </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
@@ -362,43 +357,36 @@ function CvCard({ cv, onDelete }) {
       {/* Expanded content */}
       {expanded && (
         <div style={{ padding: '0 18px 18px', borderTop: '1px solid var(--border)' }}>
-          {/* Summary */}
           {cv.summary && (
             <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--ink-60)', lineHeight: 1.7, margin: 0 }}>{cv.summary}</p>
             </div>
           )}
 
-          {/* Skills */}
           {cv.skills && cv.skills.length > 0 && (
             <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                 <HiStar style={{ width: 12, height: 12, color: 'var(--brand)' }} />
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Умения</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('profile.skills')}</span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {cv.skills.slice(0, 12).map((skill, i) => (
-                  <span key={i} style={{
-                    fontSize: '0.72rem', fontWeight: 600,
-                    background: 'var(--surface-2)', color: 'var(--ink-70)',
-                    padding: '4px 10px', borderRadius: 6,
-                  }}>{skill}</span>
+                  <span key={i} style={{ fontSize: '0.72rem', fontWeight: 600, background: 'var(--surface-2)', color: 'var(--ink-70)', padding: '4px 10px', borderRadius: 6 }}>{skill}</span>
                 ))}
                 {cv.skills.length > 12 && (
                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--ink-40)', padding: '4px 10px' }}>
-                    +{cv.skills.length - 12} още
+                    {t('profile.more_skills', { count: cv.skills.length - 12 })}
                   </span>
                 )}
               </div>
             </div>
           )}
 
-          {/* Experience */}
           {cv.experience && cv.experience.length > 0 && (
             <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                 <HiBriefcase style={{ width: 12, height: 12, color: 'var(--brand)' }} />
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Опит</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('profile.experience')}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {cv.experience.slice(0, 3).map((exp, i) => (
@@ -406,9 +394,7 @@ function CvCard({ cv, onDelete }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
                       <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--ink)' }}>{exp.role}</span>
                       {exp.period && (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 4 }}>
-                          {exp.period}
-                        </span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 4 }}>{exp.period}</span>
                       )}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--brand)', fontWeight: 600, marginBottom: 4 }}>{exp.company}</div>
@@ -428,12 +414,11 @@ function CvCard({ cv, onDelete }) {
             </div>
           )}
 
-          {/* Education */}
           {cv.education && cv.education.length > 0 && (
             <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                 <HiAcademicCap style={{ width: 12, height: 12, color: 'var(--brand)' }} />
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Образование</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('profile.education')}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {cv.education.map((edu, i) => (
@@ -443,9 +428,7 @@ function CvCard({ cv, onDelete }) {
                       <div style={{ fontSize: '0.78rem', color: 'var(--brand)' }}>{edu.school}</div>
                     </div>
                     {edu.period && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 4 }}>
-                        {edu.period}
-                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 4 }}>{edu.period}</span>
                     )}
                   </div>
                 ))}
@@ -453,14 +436,12 @@ function CvCard({ cv, onDelete }) {
             </div>
           )}
 
-          {/* Languages & Certifications row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, paddingTop: 4 }}>
-            {/* Languages */}
             {cv.languages && cv.languages.length > 0 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <HiGlobeAlt style={{ width: 12, height: 12, color: 'var(--brand)' }} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Езици</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('profile.languages')}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {cv.languages.map((lang, i) => (
@@ -470,12 +451,11 @@ function CvCard({ cv, onDelete }) {
               </div>
             )}
 
-            {/* Certifications */}
             {cv.certifications && cv.certifications.length > 0 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <HiStar style={{ width: 12, height: 12, color: 'var(--brand)' }} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Сертификати</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('profile.certifications')}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {cv.certifications.map((cert, i) => (

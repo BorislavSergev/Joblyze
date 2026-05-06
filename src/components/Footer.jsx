@@ -1,9 +1,25 @@
 import { Link } from 'react-router-dom'
 import { HiHome, HiChartBar, HiInformationCircle, HiMail, HiTemplate } from 'react-icons/hi'
 import { FaBrain, FaGithub, FaLinkedin, FaTwitter } from 'react-icons/fa'
+import { useTranslation } from 'react-i18next'
 
 function Footer() {
   const year = new Date().getFullYear()
+  const { t } = useTranslation()
+
+  const navLinks = [
+    { to: '/',          label: t('nav.home'),      Icon: HiHome },
+    { to: '/analyze',   label: t('nav.analyze'),   Icon: HiChartBar },
+    { to: '/templates', label: t('nav.templates'), Icon: HiTemplate },
+    { to: '/about',     label: t('nav.about'),     Icon: HiInformationCircle },
+  ]
+
+  const resources = [
+    t('footer.doc'),
+    t('footer.api_ref'),
+    t('footer.faq'),
+    t('footer.support'),
+  ]
 
   return (
     <footer className="footer">
@@ -23,7 +39,7 @@ function Footer() {
               <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.0625rem', color: '#fff' }}>Joblyze</span>
             </Link>
             <p style={{ fontSize: '0.875rem', lineHeight: 1.65, marginBottom: 20, maxWidth: 220 }}>
-              AI платформа за анализ на резюмета и обяви за работа.
+              {t('footer.description')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
@@ -51,14 +67,9 @@ function Footer() {
 
           {/* Nav */}
           <div>
-            <p className="footer-title">Навигация</p>
+            <p className="footer-title">{t('footer.navigation')}</p>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { to: '/',          label: 'Начало',     Icon: HiHome },
-                { to: '/analyze',   label: 'Анализиране', Icon: HiChartBar },
-                { to: '/templates', label: 'Шаблони',    Icon: HiTemplate },
-                { to: '/about',     label: 'За нас',     Icon: HiInformationCircle },
-              ].map(({ to, label, Icon }) => (
+              {navLinks.map(({ to, label, Icon }) => (
                 <li key={to}>
                   <Link to={to} className="footer-link">
                     <Icon style={{ width: 14, height: 14 }} />
@@ -71,9 +82,9 @@ function Footer() {
 
           {/* Resources */}
           <div>
-            <p className="footer-title">Ресурси</p>
+            <p className="footer-title">{t('footer.resources')}</p>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {['Документация', 'API Референция', 'Често задавани въпроси', 'Поддръжка'].map(item => (
+              {resources.map(item => (
                 <li key={item}>
                   <a href="#" className="footer-link">{item}</a>
                 </li>
@@ -83,7 +94,7 @@ function Footer() {
 
           {/* Contact */}
           <div>
-            <p className="footer-title">Контакт</p>
+            <p className="footer-title">{t('footer.contact')}</p>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <li>
                 <a href="mailto:contact@joblyze.com" className="footer-link">
@@ -91,15 +102,15 @@ function Footer() {
                   contact@joblyze.com
                 </a>
               </li>
-              <li style={{ fontSize: '0.875rem' }}>Русе, България</li>
+              <li style={{ fontSize: '0.875rem' }}>{t('footer.location')}</li>
             </ul>
           </div>
         </div>
 
         {/* Bottom */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <p style={{ fontSize: '0.8125rem' }}>© {year} Joblyze. Всички права запазени.</p>
-          <p style={{ fontSize: '0.8125rem' }}>Направено с ❤ в България</p>
+          <p style={{ fontSize: '0.8125rem' }}>{t('footer.copyright', { year })}</p>
+          <p style={{ fontSize: '0.8125rem' }}>{t('footer.made_with_love')}</p>
         </div>
       </div>
     </footer>

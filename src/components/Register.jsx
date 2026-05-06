@@ -4,10 +4,12 @@ import { HiLockClosed, HiMail, HiUser, HiArrowRight, HiEye, HiEyeOff, HiCamera, 
 import { FaBrain } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../services/supabaseClient'
+import { useTranslation } from 'react-i18next'
 
 function Register() {
   const { signUp, updateUser, upsertProfile, refreshProfile, setProfileOptimistic } = useAuth()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -21,8 +23,8 @@ function Register() {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) { setError('Моля, качете изображение.'); return }
-    if (file.size > 5 * 1024 * 1024) { setError('Снимката трябва да е под 5MB.'); return }
+    if (!file.type.startsWith('image/')) { setError(t('register.invalid_image')); return }
+    if (file.size > 5 * 1024 * 1024) { setError(t('register.photo_too_large')); return }
     setError('')
     setAvatarFile(file)
     const reader = new FileReader()
@@ -35,21 +37,21 @@ function Register() {
     const ext = avatarFile.name.split('.').pop() || 'jpg'
     const path = `${userId}/avatar-${Date.now()}.${ext}`
     const { error: err } = await supabase.storage.from('Users').upload(path, avatarFile, { upsert: true, contentType: avatarFile.type })
-    if (err) throw new Error(`Качването на снимката е неуспешно: ${err.message}`)
+    if (err) throw new Error(t('register.upload_failed', { message: err.message }))
     return path
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(''); setMessage('')
-    if (!username.trim()) { setError('Потребителското име е задължително.'); return }
+    if (!username.trim()) { setError(t('register.username_required')); return }
     setLoading(true)
     try {
       const { data, error: err } = await signUp(email, password, { username: username.trim() })
       if (err) throw err
       const session = data?.session
       if (!session) {
-        setMessage('Акаунтът е създаден. Моля, потвърдете имейла си, след което влезте.')
+        setMessage(t('register.account_created'))
         return
       }
       navigate('/analyze', { replace: true })
@@ -73,7 +75,7 @@ function Register() {
         }
       })()
     } catch (err) {
-      setError(err.message || 'Регистрацията е неуспешна. Моля, опитайте отново.')
+      setError(err.message || t('register.register_failed'))
     } finally {
       setLoading(false)
     }
@@ -92,10 +94,10 @@ function Register() {
             <FaBrain style={{ width: 22, height: 22, color: '#fff' }} />
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
-            Създайте акаунт
+            {t('register.title')}
           </h1>
           <p style={{ marginTop: 6, fontSize: '0.9rem', color: 'var(--ink-60)' }}>
-            Регистрирайте се безплатно и започнете анализа
+            {t('register.subtitle')}
           </p>
         </div>
 
@@ -121,11 +123,11 @@ function Register() {
             <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
           </label>
           <div>
-            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-80)' }}>Снимка на профила</p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--ink-40)', marginTop: 2 }}>Незадължително · JPG, PNG, GIF · до 5MB</p>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-80)' }}>{t('register.profile_photo')}</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--ink-40)', marginTop: 2 }}>{t('register.photo_optional')}</p>
             {avatarPreview && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: '0.75rem', fontWeight: 600, color: 'var(--success)' }}>
-                <HiCheck style={{ width: 12, height: 12 }} /> Качена
+                <HiCheck style={{ width: 12, height: 12 }} /> {t('register.uploaded')}
               </span>
             )}
           </div>
@@ -134,16 +136,16 @@ function Register() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Username */}
           <div className="form-field">
-            <label className="form-label">Потребителско име</label>
+            <label className="form-label">{t('register.username')}</label>
             <div className="form-input-wrap">
               <HiUser className="form-input-icon" />
-              <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder="вашето_потр_име" className="form-input has-icon" />
+              <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder={t('register.username_placeholder')} className="form-input has-icon" />
             </div>
           </div>
 
           {/* Email */}
           <div className="form-field">
-            <label className="form-label">Имейл</label>
+            <label className="form-label">{t('register.email')}</label>
             <div className="form-input-wrap">
               <HiMail className="form-input-icon" />
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="form-input has-icon" />
@@ -152,7 +154,7 @@ function Register() {
 
           {/* Password */}
           <div className="form-field">
-            <label className="form-label">Парола</label>
+            <label className="form-label">{t('register.password')}</label>
             <div className="form-input-wrap">
               <HiLockClosed className="form-input-icon" />
               <input
@@ -160,7 +162,7 @@ function Register() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required minLength={6}
-                placeholder="Минимум 6 символа"
+                placeholder={t('register.min_6_chars')}
                 className="form-input has-icon"
                 style={{ paddingRight: 40 }}
               />
@@ -178,19 +180,19 @@ function Register() {
 
           <button type="submit" disabled={loading} className="btn-primary"
             style={{ width: '100%', justifyContent: 'center', padding: '13px 20px', fontSize: '0.9375rem', marginTop: 4 }}>
-            {loading ? 'Създаване на акаунт...' : 'Регистрация'}
+            {loading ? t('register.creating_account') : t('register.submit')}
             {!loading && <HiArrowRight style={{ width: 16, height: 16 }} />}
           </button>
         </form>
 
         <div className="auth-divider">
           <div className="auth-divider-line" />
-          <span className="auth-divider-text">Вече имате акаунт?</span>
+          <span className="auth-divider-text">{t('register.have_account')}</span>
           <div className="auth-divider-line" />
         </div>
 
         <Link to="/auth" className="btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: '0.9rem' }}>
-          Влезте в профила си
+          {t('register.sign_in_link')}
         </Link>
       </div>
     </div>

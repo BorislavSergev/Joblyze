@@ -1,8 +1,18 @@
 import { FaBrain, FaUsers, FaRocket, FaShieldAlt } from 'react-icons/fa'
 import { HiSparkles, HiArrowRight } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function About() {
+  const { t } = useTranslation()
+
+  const features = [
+    { icon: FaBrain,     title: t('about.feature_ai_title'),      desc: t('about.feature_ai_desc'),      delay: 'd-3' },
+    { icon: FaUsers,     title: t('about.feature_for_all_title'), desc: t('about.feature_for_all_desc'), delay: 'd-4' },
+    { icon: FaRocket,    title: t('about.feature_fast_title'),    desc: t('about.feature_fast_desc'),    delay: 'd-3' },
+    { icon: FaShieldAlt, title: t('about.feature_privacy_title'), desc: t('about.feature_privacy_desc'), delay: 'd-4' },
+  ]
+
   return (
     <div className="page-container" style={{ paddingTop: 'clamp(40px,6vw,72px)', paddingBottom: 'clamp(40px,6vw,72px)' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -11,10 +21,10 @@ function About() {
         <div style={{ marginBottom: 'clamp(48px,7vw,72px)' }}>
           <span className="chip chip-brand anim-fade-up" style={{ marginBottom: 16, display: 'inline-flex' }}>
             <HiSparkles style={{ width: 11, height: 11 }} />
-            За нас
+            {t('about.chip')}
           </span>
           <h1 className="section-title anim-fade-up d-1" style={{ maxWidth: 560, margin: '0 0 16px' }}>
-            Какво е Joblyze?
+            {t('about.title')}
           </h1>
           <p className="anim-fade-up d-2" style={{
             fontSize: 'clamp(0.9375rem,2vw,1.0625rem)',
@@ -22,9 +32,7 @@ function About() {
             lineHeight: 1.75,
             maxWidth: 600,
           }}>
-            Joblyze е платформа, задвижвана от изкуствен интелект, предназначена да помогне
-            на специалистите по подбор на персонал и HR екипите да създават по-добри
-            длъжностни характеристики и да намерят идеалните кандидати.
+            {t('about.description')}
           </p>
         </div>
 
@@ -44,25 +52,17 @@ function About() {
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', marginBottom: 10 }}>
-              Нашата мисия
+              {t('about.mission_title')}
             </h2>
             <p style={{ fontSize: '0.9375rem', color: 'var(--ink-60)', lineHeight: 1.75 }}>
-              Вярваме, че всяка организация заслужава достъп до интелигентни инструменти,
-              които правят набирането на персонал по-справедливо, по-ефективно и
-              по-приобщаващо. Нашите алгоритми анализират обявите за работа за яснота,
-              приобщаване и ефективност.
+              {t('about.mission_desc')}
             </p>
           </div>
         </div>
 
         {/* ── Feature grid ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,230px),1fr))', gap: 14, marginBottom: 24 }}>
-          {[
-            { icon: FaBrain,      title: 'AI-задвижван',  desc: 'Gemini AI с поддръжка за стрийминг на резултати в реално време.', delay: 'd-3' },
-            { icon: FaUsers,      title: 'За всички',     desc: 'За рекрутери, HR екипи и мениджъри без технически умения.',      delay: 'd-4' },
-            { icon: FaRocket,     title: 'Бърз и лесен',  desc: 'Пълен анализ за секунди с конкретни приложими препоръки.',       delay: 'd-3' },
-            { icon: FaShieldAlt,  title: 'Поверителност', desc: 'Документите ви не се съхраняват. Пълна поверителност.',          delay: 'd-4' },
-          ].map(({ icon: Icon, title, desc, delay }) => (
+          {features.map(({ icon: Icon, title, desc, delay }) => (
             <div key={title} className={`card card-hover anim-fade-up ${delay}`} style={{ padding: 'clamp(20px,3vw,28px)', textAlign: 'center' }}>
               <div className="icon-box icon-box-sm" style={{ margin: '0 auto 14px' }}>
                 <Icon style={{ width: 17, height: 17 }} />
@@ -85,10 +85,10 @@ function About() {
           <div style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.25rem,2.5vw,1.625rem)', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em', marginBottom: 10 }}>
-              Готови ли сте да започнете?
+              {t('about.cta_title')}
             </h2>
             <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.72)', marginBottom: 28, lineHeight: 1.6 }}>
-              Анализирайте резюмето си безплатно и получете персонализирана обратна връзка.
+              {t('about.cta_subtitle')}
             </p>
             <Link to="/register" style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -101,7 +101,7 @@ function About() {
               onMouseOut={e => e.currentTarget.style.transform = ''}
             >
               <HiSparkles style={{ width: 15, height: 15 }} />
-              Опитайте Joblyze
+              {t('about.cta_button')}
               <HiArrowRight style={{ width: 14, height: 14 }} />
             </Link>
           </div>
