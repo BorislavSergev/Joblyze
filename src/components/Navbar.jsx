@@ -132,13 +132,13 @@ function Navbar() {
                     ? <img src={avatarSrc} alt="" className="nav-avatar" onError={() => setAvatarSrc('')} />
                     : <div className="nav-avatar-fallback">{initial}</div>
                   }
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--ink-80)', maxWidth: 120 }} className="truncate">
+                  <span className="nav-username truncate" style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--ink-80)', maxWidth: 120 }}>
                     {displayName}
                   </span>
                 </Link>
                 <button
                   onClick={signOut}
-                  className="btn-ghost"
+                  className="btn-ghost nav-signout"
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <HiLogout style={{ width: 14, height: 14 }} />
@@ -147,10 +147,10 @@ function Navbar() {
               </>
             ) : (
               <>
-                <Link to="/auth" className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
+                <Link to="/auth" className="btn-secondary nav-auth-btn" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
                   {t('nav.sign_in')}
                 </Link>
-                <Link to="/register" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
+                <Link to="/register" className="btn-primary nav-auth-btn" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
                   {t('nav.register')}
                 </Link>
               </>

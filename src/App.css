@@ -291,6 +291,19 @@ input, textarea, select {
 @media (max-width: 768px) {
   .nav-links { display: none; }
   .hamburger { display: flex; }
+  .nav-username { display: none; }
+  .nav-signout { display: none !important; }
+  .nav-auth-btn { display: none !important; }
+  .mobile-menu-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mobile-menu-actions .btn-secondary,
+  .mobile-menu-actions .btn-primary,
+  .mobile-menu-actions .btn-ghost {
+    justify-content: center;
+    text-align: center;
+  }
 }
 @media (min-width: 769px) {
   .mobile-menu { display: none !important; }
