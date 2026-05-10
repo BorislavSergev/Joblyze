@@ -138,7 +138,13 @@
     "save_success": "CV was saved successfully to your profile.",
     "save_error_login": "You must be signed in to save a CV.",
     "save_error_generic": "Failed to save CV. Please try again.",
-    "error_generic": "Analysis failed. Check your API key and try again."
+    "error_generic": "Analysis failed. Check your API key and try again.",
+    "upload_file": "Upload File",
+    "pick_saved_cv": "Saved CVs",
+    "no_saved_cvs": "No saved CVs yet",
+    "no_saved_cvs_hint": "Analyze a CV file first and save it to your profile.",
+    "sign_in_to_use": "Sign in to access saved CVs",
+    "upload_hint": "After analysis, AI will offer to save your CV to your profile — so you can reuse it here or in Templates without uploading again."
   },
   "about": {
     "chip": "About Us",

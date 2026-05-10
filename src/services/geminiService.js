@@ -1,10 +1,12 @@
 import { createGeminiClient, generateContentStreamWithFallback, generateContentWithFallback } from './geminiClient'
 import { extractResumeContent } from './fileReaderService'
 
-export async function analyzeResumeWithGemini(resumeFile, jobDescription) {
+export async function analyzeResumeWithGemini(resumeFileOrText, jobDescription) {
     try {
         const ai = createGeminiClient()
-        const resumeContent = await extractResumeContent(resumeFile)
+        const resumeContent = typeof resumeFileOrText === 'string'
+            ? resumeFileOrText
+            : await extractResumeContent(resumeFileOrText)
 
         const prompt = `Забрави всички предишни взаимодействия. Това е нов, независим анализ за нов кандидат. Не използвай информация от предишни анализи или потребители.
 

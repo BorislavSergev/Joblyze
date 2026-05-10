@@ -6,8 +6,40 @@ import { analyzeResumeWithGemini, buildCvWebsiteDataWithGemini } from '../servic
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from 'react-i18next'
 
+function serializeCvToText(cv) {
+  const lines = []
+  const name = cv.name || cv.fullName || ''
+  if (name)                              lines.push(`Name: ${name}`)
+  if (cv.title || cv.position)           lines.push(`Title: ${cv.title || cv.position}`)
+  if (cv.email)                          lines.push(`Email: ${cv.email}`)
+  if (cv.phone)                          lines.push(`Phone: ${cv.phone}`)
+  if (cv.location)                       lines.push(`Location: ${cv.location}`)
+  if (cv.website || cv.linkedin)         lines.push(`Website: ${cv.website || cv.linkedin}`)
+  if (cv.summary || cv.profile)          lines.push(`\nSummary:\n${cv.summary || cv.profile}`)
+  if (Array.isArray(cv.skills) && cv.skills.length)
+    lines.push(`\nSkills:\n${cv.skills.join(', ')}`)
+  if (Array.isArray(cv.experience) && cv.experience.length) {
+    lines.push('\nExperience:')
+    cv.experience.forEach(e => {
+      lines.push(`${e.role} at ${e.company}${e.period ? ` (${e.period})` : ''}${e.location ? ` — ${e.location}` : ''}`)
+      if (Array.isArray(e.bullets)) e.bullets.forEach(b => lines.push(`  - ${b}`))
+    })
+  }
+  if (Array.isArray(cv.education) && cv.education.length) {
+    lines.push('\nEducation:')
+    cv.education.forEach(e => {
+      lines.push(`${e.degree} — ${e.school}${e.period ? ` (${e.period})` : ''}${e.gpa ? `, GPA: ${e.gpa}` : ''}`)
+    })
+  }
+  if (Array.isArray(cv.languages) && cv.languages.length)
+    lines.push(`\nLanguages:\n${cv.languages.join(', ')}`)
+  if (Array.isArray(cv.certifications) && cv.certifications.length)
+    lines.push(`\nCertifications:\n${cv.certifications.join(', ')}`)
+  return lines.join('\n')
+}
+
 function Analyze() {
-  const { user, saveCv } = useAuth()
+  const { user, saveCv, cvs } = useAuth()
   const { t } = useTranslation()
 
   const [resumeFile, setResumeFile]           = useState(null)
@@ -24,7 +56,10 @@ function Analyze() {
   const [saveSuccess, setSaveSuccess]           = useState('')
   const [saveError, setSaveError]               = useState('')
 
-  const canSubmit = resumeFile && jdText.trim() && !loading && !savingCv
+  const [inputMode, setInputMode]               = useState('file')
+  const [savedCvSelection, setSavedCvSelection] = useState(null)
+
+  const canSubmit = (resumeFile || savedCvSelection) && jdText.trim() && !loading && !savingCv
 
   const handleResumeDragOver = useCallback((e) => {
     e.preventDefault()
@@ -60,6 +95,9 @@ function Analyze() {
     }
   }, [])
 
+  const switchToFile = () => { setInputMode('file'); setSavedCvSelection(null) }
+  const switchToSaved = () => { setInputMode('saved'); setResumeFile(null); setResumeName('') }
+
   const handleSubmit = async () => {
     if (!canSubmit) return
 
@@ -73,7 +111,10 @@ function Analyze() {
     setSaveError('')
 
     try {
-      const stream = await analyzeResumeWithGemini(resumeFile, jdText)
+      const resumeInput = (inputMode === 'saved' && savedCvSelection)
+        ? serializeCvToText(savedCvSelection)
+        : resumeFile
+      const stream = await analyzeResumeWithGemini(resumeInput, jdText)
       let accumulated = ''
       let buffer = ''
       let firstChunk = false
@@ -112,7 +153,7 @@ function Analyze() {
 
       setIsStreaming(false)
 
-      if (accumulated.trim()) {
+      if (accumulated.trim() && inputMode === 'file') {
         setShowSaveCvDialog(true)
       }
     } catch (err) {
@@ -169,6 +210,8 @@ function Analyze() {
     setSavedCvData(null)
     setSaveSuccess('')
     setSaveError('')
+    setInputMode('file')
+    setSavedCvSelection(null)
   }
 
   useEffect(() => {
@@ -288,59 +331,171 @@ function Analyze() {
         gap: 16,
         marginBottom: 16,
       }}>
-        {/* Resume drop zone */}
+        {/* Resume input */}
         <div>
+          {/* Label row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
             <FaFileUpload style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
             <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.01em' }}>{t('analyze.resume_label')}</span>
-            {resumeFile && (
+            {inputMode === 'file' && resumeFile && (
               <span className="chip chip-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>
                 <HiCheck style={{ width: 10, height: 10 }} />
                 {resumeName.length > 20 ? resumeName.slice(0, 20) + '…' : resumeName}
               </span>
             )}
+            {inputMode === 'saved' && savedCvSelection && (
+              <span className="chip chip-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>
+                <HiCheck style={{ width: 10, height: 10 }} />
+                {(savedCvSelection.name || savedCvSelection.fullName || 'CV').slice(0, 22)}
+              </span>
+            )}
           </div>
 
-          <div
-            className={`drop-zone${resumeDragging ? ' dragging' : ''}${resumeFile ? ' has-file' : ''}`}
-            onDragOver={handleResumeDragOver}
-            onDragLeave={handleResumeDragLeave}
-            onDrop={handleResumeDrop}
-            style={{ padding: 'clamp(28px,5vw,44px) 20px' }}
-          >
-            <div style={{
-              width: 48, height: 48, borderRadius: 13,
-              background: resumeFile ? 'var(--brand-light)' : resumeDragging ? 'var(--brand)' : 'var(--brand-light)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 14px',
-              transition: 'background 0.2s',
-            }}>
-              <FaFileUpload style={{ width: 20, height: 20, color: resumeDragging && !resumeFile ? '#fff' : 'var(--brand)', transition: 'color 0.2s' }} />
+          {/* Mode tabs */}
+          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: 3, gap: 2, marginBottom: 10 }}>
+            <button
+              onClick={switchToFile}
+              style={{
+                flex: 1, padding: '6px 10px', borderRadius: 'calc(var(--radius) - 2px)',
+                border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: inputMode === 'file' ? 700 : 500,
+                background: inputMode === 'file' ? 'var(--white)' : 'transparent',
+                color: inputMode === 'file' ? 'var(--ink)' : 'var(--ink-40)',
+                boxShadow: inputMode === 'file' ? 'var(--shadow-xs)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                transition: 'all 0.15s',
+              }}
+            >
+              <HiUpload style={{ width: 12, height: 12 }} />
+              {t('analyze.upload_file')}
+            </button>
+            <button
+              onClick={switchToSaved}
+              disabled={!user}
+              title={!user ? t('analyze.sign_in_to_use') : ''}
+              style={{
+                flex: 1, padding: '6px 10px', borderRadius: 'calc(var(--radius) - 2px)',
+                border: 'none', cursor: !user ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: inputMode === 'saved' ? 700 : 500,
+                background: inputMode === 'saved' ? 'var(--white)' : 'transparent',
+                color: inputMode === 'saved' ? 'var(--ink)' : 'var(--ink-40)',
+                boxShadow: inputMode === 'saved' ? 'var(--shadow-xs)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                opacity: !user ? 0.45 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              <HiDocumentText style={{ width: 12, height: 12 }} />
+              {t('analyze.pick_saved_cv')}
+            </button>
+          </div>
+
+          {/* Upload mode */}
+          {inputMode === 'file' && (
+            <div
+              className={`drop-zone${resumeDragging ? ' dragging' : ''}${resumeFile ? ' has-file' : ''}`}
+              onDragOver={handleResumeDragOver}
+              onDragLeave={handleResumeDragLeave}
+              onDrop={handleResumeDrop}
+              style={{ padding: 'clamp(28px,5vw,44px) 20px' }}
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 13,
+                background: resumeFile ? 'var(--brand-light)' : resumeDragging ? 'var(--brand)' : 'var(--brand-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 14px', transition: 'background 0.2s',
+              }}>
+                <FaFileUpload style={{ width: 20, height: 20, color: resumeDragging && !resumeFile ? '#fff' : 'var(--brand)', transition: 'color 0.2s' }} />
+              </div>
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: resumeFile ? 'var(--brand)' : 'var(--ink)', marginBottom: 6, textAlign: 'center' }}>
+                {resumeFile ? t('analyze.file_uploaded') : resumeDragging ? t('analyze.drop_file_here') : t('analyze.drag_or_click')}
+              </p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--ink-40)', marginBottom: 18, textAlign: 'center' }}>
+                {t('analyze.file_types')}
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <label>
+                  <span className="btn-primary" style={{ padding: '9px 18px', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                    <HiUpload style={{ width: 13, height: 13 }} />
+                    {resumeFile ? t('analyze.change') : t('analyze.select_file')}
+                  </span>
+                  <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
+                </label>
+                {resumeFile && (
+                  <button onClick={() => { setResumeFile(null); setResumeName(''); setSavedCvData(null); setSaveSuccess(''); setSaveError('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
+                    <HiX style={{ width: 13, height: 13 }} />
+                    {t('analyze.clear')}
+                  </button>
+                )}
+              </div>
             </div>
+          )}
 
-            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: resumeFile ? 'var(--brand)' : 'var(--ink)', marginBottom: 6, textAlign: 'center' }}>
-              {resumeFile ? t('analyze.file_uploaded') : resumeDragging ? t('analyze.drop_file_here') : t('analyze.drag_or_click')}
-            </p>
-            <p style={{ fontSize: '0.78rem', color: 'var(--ink-40)', marginBottom: 18, textAlign: 'center' }}>
-              {t('analyze.file_types')}
-            </p>
+          {/* Save hint — only in file mode, before a file is uploaded */}
+          {inputMode === 'file' && !resumeFile && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '9px 12px', borderRadius: 'var(--radius)', background: 'var(--brand-light)', border: '1px solid var(--brand-mid)' }}>
+              <HiSparkles style={{ width: 12, height: 12, color: 'var(--brand)', flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: '0.74rem', color: 'var(--brand-dark)', lineHeight: 1.6, margin: 0 }}>
+                {t('analyze.upload_hint')}
+              </p>
+            </div>
+          )}
 
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <label>
-                <span className="btn-primary" style={{ padding: '9px 18px', fontSize: '0.8125rem', cursor: 'pointer' }}>
-                  <HiUpload style={{ width: 13, height: 13 }} />
-                  {resumeFile ? t('analyze.change') : t('analyze.select_file')}
-                </span>
-                <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
-              </label>
-              {resumeFile && (
-                <button onClick={() => { setResumeFile(null); setResumeName(''); setSavedCvData(null); setSaveSuccess(''); setSaveError('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
-                  <HiX style={{ width: 13, height: 13 }} />
-                  {t('analyze.clear')}
-                </button>
+          {/* Saved CV picker mode */}
+          {inputMode === 'saved' && (
+            <div className="drop-zone" style={{ padding: '16px', minHeight: 180 }}>
+              {!cvs?.length ? (
+                <div style={{ textAlign: 'center', padding: '24px 8px' }}>
+                  <HiDocumentText style={{ width: 32, height: 32, color: 'var(--ink-20)', margin: '0 auto 10px', display: 'block' }} />
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-40)', marginBottom: 5 }}>
+                    {t('analyze.no_saved_cvs')}
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--ink-30)' }}>
+                    {t('analyze.no_saved_cvs_hint')}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+                  {cvs.map(cv => {
+                    const name = cv.name || cv.fullName || 'CV'
+                    const initials = name.split(' ').filter(Boolean).map(p => p[0]).join('').toUpperCase().slice(0, 2) || 'CV'
+                    const isSelected = savedCvSelection?.id === cv.id
+                    return (
+                      <button
+                        key={cv.id}
+                        onClick={() => setSavedCvSelection(cv)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 12px', borderRadius: 'var(--radius)',
+                          border: `1.5px solid ${isSelected ? 'var(--brand)' : 'var(--border)'}`,
+                          background: isSelected ? 'var(--brand-light)' : 'var(--white)',
+                          cursor: 'pointer', textAlign: 'left', width: '100%',
+                          transition: 'border-color 0.15s, background 0.15s',
+                        }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                          background: isSelected ? 'var(--brand)' : 'var(--surface-2)',
+                          color: isSelected ? '#fff' : 'var(--ink-60)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.72rem', fontWeight: 800,
+                        }}>
+                          {initials}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: isSelected ? 'var(--brand)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {name}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--ink-40)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {cv.title || cv.email || ''}
+                          </div>
+                        </div>
+                        {isSelected && <HiCheck style={{ width: 16, height: 16, color: 'var(--brand)', flexShrink: 0 }} />}
+                      </button>
+                    )
+                  })}
+                </div>
               )}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Job description */}
