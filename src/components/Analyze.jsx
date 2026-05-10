@@ -225,6 +225,12 @@ function Analyze() {
     return () => clearTimeout(timer)
   }, [saveSuccess])
 
+  useEffect(() => {
+    if (!showSaveCvDialog) return
+    const timer = setTimeout(() => handleSkipSaveCv(), 12000)
+    return () => clearTimeout(timer)
+  }, [showSaveCvDialog])
+
   const mdComponents = {
     h1: ({ ...p }) => <h1 className="md" style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, color: 'var(--ink)', margin: '24px 0 12px', letterSpacing: '-0.02em' }} {...p} />,
     h2: ({ ...p }) => <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--ink)', margin: '22px 0 10px', paddingLeft: 12, borderLeft: '3px solid var(--brand)' }} {...p} />,
@@ -278,25 +284,45 @@ function Analyze() {
         </div>
       )}
 
-      {/* ── Save CV dialog ── */}
+      {/* ── Save CV toast (non-blocking) ── */}
       {showSaveCvDialog && (
-        <div className="loading-overlay">
-          <div className="loading-card" style={{ textAlign: 'left' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <HiSave style={{ width: 18, height: 18, color: 'var(--brand)' }} />
+        <div style={{
+          position: 'fixed', bottom: 28, right: 28, zIndex: 9998,
+          width: 'min(380px, calc(100vw - 48px))',
+          borderRadius: 'var(--radius-xl)',
+          background: 'var(--white)',
+          boxShadow: '0 24px 64px rgba(15,23,42,0.16), 0 4px 16px rgba(15,23,42,0.08)',
+          border: '1px solid var(--border)',
+          overflow: 'hidden',
+          animation: 'slideInRight 0.4s var(--ease) both',
+        }}>
+          <div style={{ height: 3, background: 'var(--brand)', animation: 'toastProgress 12s linear forwards' }} />
+          <div style={{ padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <HiSave style={{ width: 20, height: 20, color: 'var(--brand)' }} />
               </div>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', color: 'var(--ink)' }}>
-                {t('analyze.save_dialog_title')}
-              </h3>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)', marginBottom: 4, letterSpacing: '-0.01em' }}>
+                  {t('analyze.save_dialog_title')}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--ink-60)', lineHeight: 1.55 }}>
+                  {t('analyze.save_dialog_desc')}
+                </div>
+              </div>
+              <button onClick={handleSkipSaveCv} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-40)', cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s' }}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                onMouseOut={e => e.currentTarget.style.background = 'var(--white)'}
+              >
+                <HiX style={{ width: 13, height: 13 }} />
+              </button>
             </div>
-            <p style={{ fontSize: '0.9rem', color: 'var(--ink-60)', lineHeight: 1.65, marginBottom: 24 }}>
-              {t('analyze.save_dialog_desc')}
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button onClick={handleSkipSaveCv} className="btn-secondary">{t('analyze.no_thanks')}</button>
-              <button onClick={handleSaveScrapedCv} className="btn-primary">
-                <HiSave style={{ width: 14, height: 14 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleSkipSaveCv} className="btn-secondary" style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem' }}>
+                {t('analyze.no_thanks')}
+              </button>
+              <button onClick={handleSaveScrapedCv} className="btn-primary" style={{ flex: 1, justifyContent: 'center', fontSize: '0.8125rem' }}>
+                <HiSave style={{ width: 13, height: 13 }} />
                 {t('analyze.yes_save')}
               </button>
             </div>
