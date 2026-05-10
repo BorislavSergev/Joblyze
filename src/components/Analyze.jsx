@@ -219,6 +219,12 @@ function Analyze() {
     return () => { document.body.style.overflow = '' }
   }, [loading, savingCv])
 
+  useEffect(() => {
+    if (!saveSuccess) return
+    const timer = setTimeout(() => setSaveSuccess(''), 4500)
+    return () => clearTimeout(timer)
+  }, [saveSuccess])
+
   const mdComponents = {
     h1: ({ ...p }) => <h1 className="md" style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, color: 'var(--ink)', margin: '24px 0 12px', letterSpacing: '-0.02em' }} {...p} />,
     h2: ({ ...p }) => <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--ink)', margin: '22px 0 10px', paddingLeft: 12, borderLeft: '3px solid var(--brand)' }} {...p} />,
@@ -239,6 +245,10 @@ function Analyze() {
     code:       ({ ...p }) => <code style={{ fontSize: '0.85em', background: 'var(--surface-2)', borderRadius: 5, padding: '1px 6px', color: 'var(--brand-dark)', fontFamily: 'monospace' }} {...p} />,
   }
 
+  const skeletonBar = (w = '100%', h = 8) => (
+    <div style={{ height: h, borderRadius: 4, width: w, background: 'linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.8s infinite' }} />
+  )
+
   return (
     <div className="page-container" style={{ paddingTop: 'clamp(40px,6vw,68px)', paddingBottom: 'clamp(40px,6vw,68px)' }}>
 
@@ -250,9 +260,7 @@ function Analyze() {
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
               {t('analyze.loading_title')}
             </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
-              {t('analyze.loading_subtitle')}
-            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>{t('analyze.loading_subtitle')}</p>
           </div>
         </div>
       )}
@@ -265,9 +273,7 @@ function Analyze() {
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8, letterSpacing: '-0.02em' }}>
               {t('analyze.saving_title')}
             </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>
-              {t('analyze.saving_subtitle')}
-            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--ink-60)' }}>{t('analyze.saving_subtitle')}</p>
           </div>
         </div>
       )}
@@ -284,15 +290,11 @@ function Analyze() {
                 {t('analyze.save_dialog_title')}
               </h3>
             </div>
-
             <p style={{ fontSize: '0.9rem', color: 'var(--ink-60)', lineHeight: 1.65, marginBottom: 24 }}>
               {t('analyze.save_dialog_desc')}
             </p>
-
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button onClick={handleSkipSaveCv} className="btn-secondary">
-                {t('analyze.no_thanks')}
-              </button>
+              <button onClick={handleSkipSaveCv} className="btn-secondary">{t('analyze.no_thanks')}</button>
               <button onClick={handleSaveScrapedCv} className="btn-primary">
                 <HiSave style={{ width: 14, height: 14 }} />
                 {t('analyze.yes_save')}
@@ -303,20 +305,13 @@ function Analyze() {
       )}
 
       {/* ── Page header ── */}
-      <div style={{ marginBottom: 'clamp(36px,6vw,60px)' }}>
-        <span className="chip chip-brand anim-fade-up" style={{ display: 'inline-flex', marginBottom: 14 }}>
+      <div className="anim-fade-up" style={{ marginBottom: 'clamp(32px,5vw,52px)', position: 'relative' }}>
+        <div aria-hidden style={{ position: 'absolute', top: -40, left: -60, width: 420, height: 300, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(37,99,235,0.07) 0%, transparent 65%)', pointerEvents: 'none' }} />
+        <span className="chip chip-brand" style={{ display: 'inline-flex', marginBottom: 14 }}>
           <HiSparkles style={{ width: 11, height: 11 }} />
           {t('analyze.chip')}
         </span>
-        <h1 className="anim-fade-up d-1" style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(1.75rem,4vw,2.75rem)',
-          fontWeight: 800,
-          color: 'var(--ink)',
-          letterSpacing: '-0.03em',
-          lineHeight: 1.15,
-          marginBottom: 12,
-        }}>
+        <h1 className="anim-fade-up d-1" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.75rem,4vw,2.75rem)', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 12 }}>
           {t('analyze.title')}
         </h1>
         <p className="anim-fade-up d-2" style={{ fontSize: 'clamp(0.9rem,2vw,1.0625rem)', color: 'var(--ink-60)', maxWidth: 540, lineHeight: 1.7 }}>
@@ -324,133 +319,91 @@ function Analyze() {
         </p>
       </div>
 
-      {/* ── Input grid ── */}
-      <div className="anim-fade-up d-2" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,320px),1fr))',
-        gap: 16,
-        marginBottom: 16,
-      }}>
-        {/* Resume input */}
-        <div>
-          {/* Label row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-            <FaFileUpload style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.01em' }}>{t('analyze.resume_label')}</span>
+      {/* ── Input cards ── */}
+      <div className="anim-fade-up d-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,320px),1fr))', gap: 16, marginBottom: 12 }}>
+
+        {/* ── Resume card ── */}
+        <div style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--white)', boxShadow: 'var(--shadow-md)', display: 'flex', flexDirection: 'column' }}>
+          {/* Card header */}
+          <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(37,99,235,0.08) 0%, transparent 100%)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: 'var(--shadow-brand)' }}>
+              <FaFileUpload style={{ width: 13, height: 13, color: '#fff' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2 }}>{t('analyze.resume_label')}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--ink-40)', marginTop: 1, fontWeight: 500 }}>Step 1 of 2</div>
+            </div>
             {inputMode === 'file' && resumeFile && (
-              <span className="chip chip-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>
+              <span className="chip chip-success" style={{ fontSize: '0.68rem' }}>
                 <HiCheck style={{ width: 10, height: 10 }} />
-                {resumeName.length > 20 ? resumeName.slice(0, 20) + '…' : resumeName}
+                {resumeName.length > 18 ? resumeName.slice(0, 18) + '…' : resumeName}
               </span>
             )}
             {inputMode === 'saved' && savedCvSelection && (
-              <span className="chip chip-success" style={{ marginLeft: 'auto', fontSize: '0.7rem' }}>
+              <span className="chip chip-success" style={{ fontSize: '0.68rem' }}>
                 <HiCheck style={{ width: 10, height: 10 }} />
-                {(savedCvSelection.name || savedCvSelection.fullName || 'CV').slice(0, 22)}
+                {(savedCvSelection.name || savedCvSelection.fullName || 'CV').slice(0, 20)}
               </span>
             )}
           </div>
 
-          {/* Mode tabs */}
-          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: 3, gap: 2, marginBottom: 10 }}>
-            <button
-              onClick={switchToFile}
-              style={{
-                flex: 1, padding: '6px 10px', borderRadius: 'calc(var(--radius) - 2px)',
-                border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: inputMode === 'file' ? 700 : 500,
-                background: inputMode === 'file' ? 'var(--white)' : 'transparent',
-                color: inputMode === 'file' ? 'var(--ink)' : 'var(--ink-40)',
-                boxShadow: inputMode === 'file' ? 'var(--shadow-xs)' : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                transition: 'all 0.15s',
-              }}
-            >
-              <HiUpload style={{ width: 12, height: 12 }} />
-              {t('analyze.upload_file')}
-            </button>
-            <button
-              onClick={switchToSaved}
-              disabled={!user}
-              title={!user ? t('analyze.sign_in_to_use') : ''}
-              style={{
-                flex: 1, padding: '6px 10px', borderRadius: 'calc(var(--radius) - 2px)',
-                border: 'none', cursor: !user ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: inputMode === 'saved' ? 700 : 500,
-                background: inputMode === 'saved' ? 'var(--white)' : 'transparent',
-                color: inputMode === 'saved' ? 'var(--ink)' : 'var(--ink-40)',
-                boxShadow: inputMode === 'saved' ? 'var(--shadow-xs)' : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                opacity: !user ? 0.45 : 1,
-                transition: 'all 0.15s',
-              }}
-            >
-              <HiDocumentText style={{ width: 12, height: 12 }} />
-              {t('analyze.pick_saved_cv')}
-            </button>
-          </div>
-
-          {/* Upload mode */}
-          {inputMode === 'file' && (
-            <div
-              className={`drop-zone${resumeDragging ? ' dragging' : ''}${resumeFile ? ' has-file' : ''}`}
-              onDragOver={handleResumeDragOver}
-              onDragLeave={handleResumeDragLeave}
-              onDrop={handleResumeDrop}
-              style={{ padding: 'clamp(28px,5vw,44px) 20px' }}
-            >
-              <div style={{
-                width: 48, height: 48, borderRadius: 13,
-                background: resumeFile ? 'var(--brand-light)' : resumeDragging ? 'var(--brand)' : 'var(--brand-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 14px', transition: 'background 0.2s',
-              }}>
-                <FaFileUpload style={{ width: 20, height: 20, color: resumeDragging && !resumeFile ? '#fff' : 'var(--brand)', transition: 'color 0.2s' }} />
-              </div>
-              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: resumeFile ? 'var(--brand)' : 'var(--ink)', marginBottom: 6, textAlign: 'center' }}>
-                {resumeFile ? t('analyze.file_uploaded') : resumeDragging ? t('analyze.drop_file_here') : t('analyze.drag_or_click')}
-              </p>
-              <p style={{ fontSize: '0.78rem', color: 'var(--ink-40)', marginBottom: 18, textAlign: 'center' }}>
-                {t('analyze.file_types')}
-              </p>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <label>
-                  <span className="btn-primary" style={{ padding: '9px 18px', fontSize: '0.8125rem', cursor: 'pointer' }}>
-                    <HiUpload style={{ width: 13, height: 13 }} />
-                    {resumeFile ? t('analyze.change') : t('analyze.select_file')}
-                  </span>
-                  <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
-                </label>
-                {resumeFile && (
-                  <button onClick={() => { setResumeFile(null); setResumeName(''); setSavedCvData(null); setSaveSuccess(''); setSaveError('') }} className="btn-secondary" style={{ padding: '9px 14px', fontSize: '0.8125rem' }}>
-                    <HiX style={{ width: 13, height: 13 }} />
-                    {t('analyze.clear')}
-                  </button>
-                )}
-              </div>
+          {/* Card body */}
+          <div style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Mode tabs */}
+            <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: 3, gap: 2 }}>
+              <button onClick={switchToFile} style={{ flex: 1, padding: '6px 10px', borderRadius: 'calc(var(--radius) - 2px)', border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: inputMode === 'file' ? 700 : 500, background: inputMode === 'file' ? 'var(--white)' : 'transparent', color: inputMode === 'file' ? 'var(--ink)' : 'var(--ink-40)', boxShadow: inputMode === 'file' ? 'var(--shadow-xs)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
+                <HiUpload style={{ width: 12, height: 12 }} />
+                {t('analyze.upload_file')}
+              </button>
+              <button onClick={switchToSaved} disabled={!user} title={!user ? t('analyze.sign_in_to_use') : ''} style={{ flex: 1, padding: '6px 10px', borderRadius: 'calc(var(--radius) - 2px)', border: 'none', cursor: !user ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: inputMode === 'saved' ? 700 : 500, background: inputMode === 'saved' ? 'var(--white)' : 'transparent', color: inputMode === 'saved' ? 'var(--ink)' : 'var(--ink-40)', boxShadow: inputMode === 'saved' ? 'var(--shadow-xs)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, opacity: !user ? 0.45 : 1, transition: 'all 0.15s' }}>
+                <HiDocumentText style={{ width: 12, height: 12 }} />
+                {t('analyze.pick_saved_cv')}
+              </button>
             </div>
-          )}
 
-          {/* Save hint — only in file mode, before a file is uploaded */}
-          {inputMode === 'file' && !resumeFile && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 8, padding: '9px 12px', borderRadius: 'var(--radius)', background: 'var(--brand-light)', border: '1px solid var(--brand-mid)' }}>
-              <HiSparkles style={{ width: 12, height: 12, color: 'var(--brand)', flexShrink: 0, marginTop: 1 }} />
-              <p style={{ fontSize: '0.74rem', color: 'var(--brand-dark)', lineHeight: 1.6, margin: 0 }}>
-                {t('analyze.upload_hint')}
-              </p>
-            </div>
-          )}
+            {/* Upload drop zone */}
+            {inputMode === 'file' && (
+              <div className={`drop-zone${resumeDragging ? ' dragging' : ''}${resumeFile ? ' has-file' : ''}`} onDragOver={handleResumeDragOver} onDragLeave={handleResumeDragLeave} onDrop={handleResumeDrop} style={{ padding: 'clamp(24px,4vw,36px) 20px', flex: 1 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: resumeFile ? 'var(--brand-light)' : resumeDragging ? 'var(--brand)' : 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', transition: 'background 0.2s' }}>
+                  <FaFileUpload style={{ width: 18, height: 18, color: resumeDragging && !resumeFile ? '#fff' : 'var(--brand)', transition: 'color 0.2s' }} />
+                </div>
+                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: resumeFile ? 'var(--brand)' : 'var(--ink)', marginBottom: 5, textAlign: 'center' }}>
+                  {resumeFile ? t('analyze.file_uploaded') : resumeDragging ? t('analyze.drop_file_here') : t('analyze.drag_or_click')}
+                </p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--ink-40)', marginBottom: 16, textAlign: 'center' }}>{t('analyze.file_types')}</p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <label>
+                    <span className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                      <HiUpload style={{ width: 12, height: 12 }} />
+                      {resumeFile ? t('analyze.change') : t('analyze.select_file')}
+                    </span>
+                    <input type="file" accept=".pdf,.txt" onChange={handleResumeChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
+                  </label>
+                  {resumeFile && (
+                    <button onClick={() => { setResumeFile(null); setResumeName(''); setSavedCvData(null); setSaveSuccess(''); setSaveError('') }} className="btn-secondary" style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>
+                      <HiX style={{ width: 12, height: 12 }} />
+                      {t('analyze.clear')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
-          {/* Saved CV picker mode */}
-          {inputMode === 'saved' && (
-            <div className="drop-zone" style={{ padding: '16px', minHeight: 180 }}>
-              {!cvs?.length ? (
-                <div style={{ textAlign: 'center', padding: '24px 8px' }}>
-                  <HiDocumentText style={{ width: 32, height: 32, color: 'var(--ink-20)', margin: '0 auto 10px', display: 'block' }} />
-                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-40)', marginBottom: 5 }}>
-                    {t('analyze.no_saved_cvs')}
-                  </p>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--ink-30)' }}>
-                    {t('analyze.no_saved_cvs_hint')}
-                  </p>
+            {/* Save hint */}
+            {inputMode === 'file' && !resumeFile && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '9px 12px', borderRadius: 'var(--radius)', background: 'var(--brand-light)', border: '1px solid var(--brand-mid)' }}>
+                <HiSparkles style={{ width: 12, height: 12, color: 'var(--brand)', flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: '0.74rem', color: 'var(--brand-dark)', lineHeight: 1.6, margin: 0 }}>{t('analyze.upload_hint')}</p>
+              </div>
+            )}
+
+            {/* Saved CV picker */}
+            {inputMode === 'saved' && (
+              !cvs?.length ? (
+                <div className="drop-zone" style={{ padding: '28px 16px', textAlign: 'center', flex: 1 }}>
+                  <HiDocumentText style={{ width: 30, height: 30, color: 'var(--ink-20)', margin: '0 auto 10px', display: 'block' }} />
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-40)', marginBottom: 5 }}>{t('analyze.no_saved_cvs')}</p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--ink-30)' }}>{t('analyze.no_saved_cvs_hint')}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
@@ -459,74 +412,51 @@ function Analyze() {
                     const initials = name.split(' ').filter(Boolean).map(p => p[0]).join('').toUpperCase().slice(0, 2) || 'CV'
                     const isSelected = savedCvSelection?.id === cv.id
                     return (
-                      <button
-                        key={cv.id}
-                        onClick={() => setSavedCvSelection(cv)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 12px', borderRadius: 'var(--radius)',
-                          border: `1.5px solid ${isSelected ? 'var(--brand)' : 'var(--border)'}`,
-                          background: isSelected ? 'var(--brand-light)' : 'var(--white)',
-                          cursor: 'pointer', textAlign: 'left', width: '100%',
-                          transition: 'border-color 0.15s, background 0.15s',
-                        }}
-                      >
-                        <div style={{
-                          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                          background: isSelected ? 'var(--brand)' : 'var(--surface-2)',
-                          color: isSelected ? '#fff' : 'var(--ink-60)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '0.72rem', fontWeight: 800,
-                        }}>
-                          {initials}
-                        </div>
+                      <button key={cv.id} onClick={() => setSavedCvSelection(cv)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius)', border: `1.5px solid ${isSelected ? 'var(--brand)' : 'var(--border)'}`, background: isSelected ? 'var(--brand-light)' : 'var(--white)', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color 0.15s, background 0.15s' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: isSelected ? 'var(--brand)' : 'var(--surface-2)', color: isSelected ? '#fff' : 'var(--ink-60)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800 }}>{initials}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: isSelected ? 'var(--brand)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {name}
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--ink-40)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {cv.title || cv.email || ''}
-                          </div>
+                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: isSelected ? 'var(--brand)' : 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--ink-40)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cv.title || cv.email || ''}</div>
                         </div>
                         {isSelected && <HiCheck style={{ width: 16, height: 16, color: 'var(--brand)', flexShrink: 0 }} />}
                       </button>
                     )
                   })}
                 </div>
-              )}
-            </div>
-          )}
+              )
+            )}
+          </div>
         </div>
 
-        {/* Job description */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-            <HiClipboardCopy style={{ width: 14, height: 14, color: 'var(--brand)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--ink)' }}>{t('analyze.job_description')}</span>
+        {/* ── Job description card ── */}
+        <div style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--white)', boxShadow: 'var(--shadow-md)', display: 'flex', flexDirection: 'column' }}>
+          {/* Card header */}
+          <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, rgba(124,58,237,0.08) 0%, transparent 100%)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 14px rgba(124,58,237,0.28)' }}>
+              <HiClipboardCopy style={{ width: 14, height: 14, color: '#fff' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2 }}>{t('analyze.job_description')}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--ink-40)', marginTop: 1, fontWeight: 500 }}>Step 2 of 2</div>
+            </div>
             {jdText && (
-              <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 7px', borderRadius: 6 }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--ink-40)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: 6 }}>
                 {jdText.length} {t('analyze.chars')}
               </span>
             )}
           </div>
-          <div style={{ position: 'relative' }}>
+
+          {/* Card body */}
+          <div style={{ padding: 16, flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
             <textarea
               className="form-textarea"
               value={jdText}
               onChange={e => setJdText(e.target.value)}
               placeholder={t('analyze.job_description_placeholder')}
-              style={{ minHeight: 'clamp(180px,28vw,280px)' }}
+              style={{ minHeight: 'clamp(200px,28vw,340px)', flex: 1, resize: 'vertical' }}
             />
             {jdText && (
-              <button
-                onClick={() => setJdText('')}
-                style={{
-                  position: 'absolute', top: 10, right: 10,
-                  width: 24, height: 24, borderRadius: 6,
-                  background: 'var(--surface-2)', border: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--ink-40)', cursor: 'pointer', transition: 'background 0.15s',
-                }}
+              <button onClick={() => setJdText('')} style={{ position: 'absolute', top: 26, right: 26, width: 24, height: 24, borderRadius: 6, background: 'var(--surface-2)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-40)', cursor: 'pointer', transition: 'background 0.15s' }}
                 onMouseOver={e => e.currentTarget.style.background = 'var(--brand-light)'}
                 onMouseOut={e => e.currentTarget.style.background = 'var(--surface-2)'}
               >
@@ -537,60 +467,101 @@ function Analyze() {
         </div>
       </div>
 
-      {/* ── Actions row ── */}
-      <div className="anim-fade-up d-3" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginBottom: 40, flexWrap: 'wrap' }}>
-        {(resumeFile || jdText) && (
-          <button onClick={handleClearAll} className="btn-secondary">
-            <HiX style={{ width: 14, height: 14 }} />
-            {t('analyze.clear_all')}
-          </button>
-        )}
+      {/* ── Analyze button ── */}
+      <div className="anim-fade-up d-3" style={{ marginBottom: 48 }}>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="btn-primary"
-          style={{ padding: '12px 24px', fontSize: '0.9375rem' }}
+          style={{
+            width: '100%', padding: '16px 32px',
+            borderRadius: 'var(--radius-lg)',
+            background: canSubmit
+              ? 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #4f46e5 100%)'
+              : 'var(--surface-2)',
+            color: canSubmit ? '#fff' : 'var(--ink-40)',
+            fontSize: '1rem', fontWeight: 700,
+            border: 'none', cursor: canSubmit ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            boxShadow: canSubmit ? '0 8px 28px rgba(37,99,235,0.38)' : 'none',
+            transition: 'all 0.2s', letterSpacing: '-0.01em', fontFamily: 'var(--font)',
+          }}
+          onMouseOver={e => { if (canSubmit) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(37,99,235,0.45)' } }}
+          onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = canSubmit ? '0 8px 28px rgba(37,99,235,0.38)' : 'none' }}
         >
-          <HiSparkles style={{ width: 15, height: 15 }} />
+          <HiSparkles style={{ width: 18, height: 18 }} />
           {loading ? t('analyze.analyzing') : t('analyze.analyze_now')}
         </button>
+        {(resumeFile || savedCvSelection || jdText) && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+            <button onClick={handleClearAll} className="btn-ghost" style={{ fontSize: '0.8rem', color: 'var(--ink-40)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <HiX style={{ width: 12, height: 12 }} />
+              {t('analyze.clear_all')}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── Save messages ── */}
+      {/* ── Success toast ── */}
       {saveSuccess && (
-        <div className="alert alert-success" style={{ marginBottom: 24 }}>
-          <HiCheck style={{ width: 15, height: 15 }} />
-          <span>{saveSuccess}</span>
+        <div style={{
+          position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+          width: 'min(360px, calc(100vw - 48px))',
+          borderRadius: 'var(--radius-xl)',
+          background: 'var(--white)',
+          boxShadow: '0 24px 64px rgba(15,23,42,0.16), 0 4px 16px rgba(15,23,42,0.08)',
+          border: '1px solid var(--border)',
+          overflow: 'hidden',
+          animation: 'slideInRight 0.4s var(--ease) both',
+        }}>
+          {/* Progress bar */}
+          <div style={{ height: 3, background: 'var(--success)', width: '100%', transformOrigin: 'left', animation: 'toastProgress 4.5s linear forwards' }} />
+          {/* Body */}
+          <div style={{ padding: '16px 18px', display: 'flex', gap: 13, alignItems: 'flex-start' }}>
+            {/* Icon */}
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <HiCheck style={{ width: 20, height: 20, color: 'var(--success)' }} />
+            </div>
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)', marginBottom: 4, letterSpacing: '-0.01em' }}>
+                {t('analyze.toast_title')}
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--ink-60)', lineHeight: 1.5 }}>
+                {t('analyze.toast_desc')}
+              </div>
+            </div>
+            {/* Close */}
+            <button onClick={() => setSaveSuccess('')} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-40)', cursor: 'pointer', flexShrink: 0, transition: 'background 0.15s' }}
+              onMouseOver={e => e.currentTarget.style.background = 'var(--surface-2)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--white)'}
+            >
+              <HiX style={{ width: 13, height: 13 }} />
+            </button>
+          </div>
         </div>
       )}
-
       {saveError && (
         <div className="alert alert-error" style={{ marginBottom: 24 }}>
           <span>{saveError}</span>
         </div>
       )}
-
       {savedCvData && (
         <div className="card anim-fade-up" style={{ padding: 18, marginBottom: 28, border: '1px solid var(--brand-mid)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <HiSave style={{ width: 16, height: 16, color: 'var(--brand)' }} />
             </div>
             <div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
-                {t('analyze.cv_ready_title')}
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--ink-50)', margin: 0 }}>
-                {t('analyze.cv_ready_desc')}
-              </p>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>{t('analyze.cv_ready_title')}</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--ink-50)', margin: 0 }}>{t('analyze.cv_ready_desc')}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Feedback ── */}
+      {/* ── AI Feedback ── */}
       {feedback && (
-        <div className="feedback-wrapper" style={{ marginBottom: 32 }}>
+        <div className="feedback-wrapper anim-fade-up" style={{ marginBottom: 32 }}>
           <div className="feedback-header">
             <HiSparkles style={{ width: 17, height: 17, color: '#fff', flexShrink: 0 }} />
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>
@@ -611,11 +582,37 @@ function Analyze() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* ── Empty state — skeleton preview ── */}
       {!feedback && !loading && !savingCv && (
-        <div className="anim-fade-up d-4" style={{ textAlign: 'center', padding: '52px 24px', color: 'var(--ink-40)' }}>
-          <HiDocumentText style={{ width: 36, height: 36, margin: '0 auto 10px', display: 'block', opacity: 0.35 }} />
-          <p style={{ fontSize: '0.9rem' }}>{t('analyze.empty_state')}</p>
+        <div className="anim-fade-up d-4">
+          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-40)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
+            {t('analyze.empty_state')}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,220px),1fr))', gap: 12 }}>
+            {[
+              { label: t('analyze.skeleton_match'),           accent: '#2563eb', bars: ['60%', '80%'] },
+              { label: t('analyze.skeleton_strengths'),       accent: '#10b981', bars: ['90%', '70%', '55%'] },
+              { label: t('analyze.skeleton_gaps'),            accent: '#f59e0b', bars: ['75%', '50%'] },
+              { label: t('analyze.skeleton_recommendations'), accent: '#7c3aed', bars: ['85%', '65%', '40%'] },
+            ].map(({ label, accent, bars }) => (
+              <div key={label} style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--white)', overflow: 'hidden', opacity: 0.65 }}>
+                <div style={{ height: 3, background: accent, opacity: 0.5 }} />
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 14 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 6, background: `${accent}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 2, background: accent, opacity: 0.7 }} />
+                    </div>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--ink-60)' }}>{label}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {bars.map((w, i) => (
+                      <div key={i}>{skeletonBar(w, i === 0 ? 9 : 7)}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

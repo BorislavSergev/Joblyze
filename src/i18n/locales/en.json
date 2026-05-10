@@ -144,7 +144,13 @@
     "no_saved_cvs": "No saved CVs yet",
     "no_saved_cvs_hint": "Analyze a CV file first and save it to your profile.",
     "sign_in_to_use": "Sign in to access saved CVs",
-    "upload_hint": "After analysis, AI will offer to save your CV to your profile — so you can reuse it here or in Templates without uploading again."
+    "upload_hint": "After analysis, AI will offer to save your CV to your profile — so you can reuse it here or in Templates without uploading again.",
+    "toast_title": "CV saved to your profile!",
+    "toast_desc": "You can now use it in Templates or re-analyze it without uploading again.",
+    "skeleton_match": "Match Score",
+    "skeleton_strengths": "Key Strengths",
+    "skeleton_gaps": "Skill Gaps",
+    "skeleton_recommendations": "Recommendations"
   },
   "about": {
     "chip": "About Us",
